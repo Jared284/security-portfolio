@@ -1,9 +1,4 @@
-# Security Portfolio
-
-A curated hub for my cybersecurity projects and learning journey.  
-Each major project now lives in its own repository.
-
 ## Projects
-- [Log Inspector](https://github.com/Jared284/log-inspector) — A Python tool that parses logs to detect brute-force attacks.
-- [Linux Hardening Scripts](https://github.com/Jared284/linux-hardening-scripts) — Scripts for scanning SSH config and file permissions.
-- [TryHackMe Writeups](https://github.com/Jared284/thm-writeups) — Sanitized, documented walkthroughs for select rooms.
+- 🔹 **Log Inspector** — Python tool that parses Apache/Nginx and SSH logs to detect brute-force patterns and output reports.  
+- 🔹 **Credential Audit Tool** — Script to scan systems for weak/default credentials and generate a structured security report.  
+- 🔹 **VulnLab Exploitation Series** — A collection of documented, sanitized exploit workflows from local vulnerable lab setups (not CTF dumps).
