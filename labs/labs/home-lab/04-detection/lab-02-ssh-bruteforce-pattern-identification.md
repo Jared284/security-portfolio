@@ -1,24 +1,24 @@
-\# Lab 02 – SSH Brute-Force Pattern Identification
+# Lab 02 – SSH Brute-Force Pattern Identification
 
 
 
-\## Objective
+## Objective
 
 Identify patterns of repeated SSH authentication failures that may indicate brute-force attack behavior.
 
 
 
-\## Environment
+## Environment
 
-\- Ubuntu Server with OpenSSH enabled
+- Ubuntu Server with OpenSSH enabled
 
-\- Log source: `/var/log/auth.log`
+- Log source: `/var/log/auth.log`
 
-\- Attacker source: Windows host on local network
+- Attacker source: Windows host on local network
 
 
 
-\## Data / Evidence
+## Data / Evidence
 
 Analysis of `auth.log` revealed multiple failed SSH authentication attempts originating from a single IP address.
 
@@ -30,17 +30,17 @@ Example log entry:
 
 A total of \*\*6 failed authentication attempts\*\* were observed from:
 
-\- Source IP: `192.168.56.101`
+- Source IP: `192.168.56.101`
 
 
 
-\## Detection Logic
+## Detection Logic
 
-\- Filter SSH authentication failures from `auth.log`
+- Filter SSH authentication failures from `auth.log`
 
-\- Group events by source IP address
+- Group events by source IP address
 
-\- Identify IPs generating repeated failures over a short time window
+- Identify IPs generating repeated failures over a short time window
 
 
 
@@ -48,17 +48,17 @@ Repeated authentication failures from a single source are more indicative of mal
 
 
 
-\## Findings
+## Findings
 
-\- The IP address `192.168.56.101` generated multiple failed login attempts
+- The IP address `192.168.56.101` generated multiple failed login attempts
 
-\- Failures were clustered rather than isolated
+- Failures were clustered rather than isolated
 
-\- Activity is consistent with early-stage SSH brute-force behavior
+- Activity is consistent with early-stage SSH brute-force behavior
 
 
 
-\## Commands Used
+## Commands Used
 
 ```bash
 
