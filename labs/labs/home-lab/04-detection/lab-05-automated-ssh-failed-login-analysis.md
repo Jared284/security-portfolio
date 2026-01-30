@@ -1,26 +1,26 @@
-\# Lab 05 – Automated SSH Failed Login Analysis
+# Lab 05 – Automated SSH Failed Login Analysis
 
 
 
-\## Objective
+## Objective
 
 Automate the identification and aggregation of failed SSH authentication attempts to replicate analyst triage performed manually in prior labs.
 
 
 
-\## Environment
+## Environment
 
-\- Ubuntu Server with OpenSSH enabled
+- Ubuntu Server with OpenSSH enabled
 
-\- Log source: `/var/log/auth.log`
+- Log source: `/var/log/auth.log`
 
-\- Analysis performed using a custom script
+- Analysis performed using a custom script
 
-\- Prior manual triage methodology established in Lab 04
+- Prior manual triage methodology established in Lab 04
 
 
 
-\## Method
+## Method
 
 SSH authentication logs were parsed to extract source IP addresses associated with failed login attempts. Failures were aggregated by IP address and ranked by frequency to highlight suspicious activity.
 
@@ -30,19 +30,19 @@ This automation mirrors analyst triage logic by emphasizing behavior patterns ra
 
 
 
-\## Key Result
+## Key Result
 
 The script successfully identified repeated SSH authentication failures originating from a single source IP. The detected pattern matched indicators previously observed during manual log analysis.
 
 
 
-\## Outcome
+## Outcome
 
 Manual SSH log triage from Lab 04 was translated into a repeatable, automated workflow. This reduced reliance on raw log inspection while preserving analyst visibility into suspicious authentication behavior.
 
 
 
-\## Defensive Insight
+## Defensive Insight
 
 Automating log aggregation enables faster detection and prioritization of brute-force activity while maintaining transparency into underlying evidence. Script-based analysis bridges the gap between raw telemetry and actionable security insights.
 
