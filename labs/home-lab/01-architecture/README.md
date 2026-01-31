@@ -118,3 +118,28 @@ The architecture intentionally limits attack surface to focus on \*\*detection l
 
 
 
+## Setup and Build Decisions
+
+### Environment
+- **Host OS:** Windows 11
+- **Hypervisor:** Oracle VirtualBox
+- **Guest OS:** Ubuntu Server 24.04 LTS (amd64)
+- **Purpose:** Simulate a SOC-style Linux environment for SSH log analysis and detection engineering
+
+### Networking Design
+- The lab uses a **host-only network adapter** to restrict SSH access to the Windows host
+- This enforces an isolated trust boundary and prevents unsolicited external access
+- A **temporary NAT adapter** was added to allow outbound connectivity for package installation
+
+Initial setup attempts failed due to lack of outbound connectivity, which prevented `apt` operations.  
+This was resolved by introducing NAT for updates while preserving host-only access for SSH testing.
+
+### Services Enabled
+- OpenSSH Server (sshd)
+- fail2ban for automated SSH brute-force mitigation
+- systemd backend configured for log monitoring on Ubuntu 24.04
+
+### Design Constraints and Lessons
+- Detection logic depends on correct network reachability
+- Security controls can silently fail if traffic never reaches the host
+- Isolation must be balanced with operational needs such as updates and telemetry
