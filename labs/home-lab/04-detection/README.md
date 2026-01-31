@@ -1,4 +1,4 @@
-\# Detection Engineering – SSH Threats
+# Detection Engineering – SSH Threats
 
 
 
@@ -14,7 +14,7 @@ The goal of these labs is to move from \*\*raw telemetry → detection logic →
 
 
 
-\## Detection Scope
+## Detection Scope
 
 
 
@@ -22,13 +22,13 @@ All detections in this section are based on analysis of:
 
 
 
-\- `/var/log/auth.log`
+- `/var/log/auth.log`
 
-\- OpenSSH authentication events
+- OpenSSH authentication events
 
-\- Repeated failed authentication attempts
+- Repeated failed authentication attempts
 
-\- Indicators of brute-force activity
+- Indicators of brute-force activity
 
 
 
@@ -40,79 +40,57 @@ The lab environment intentionally simulates attacker behavior to generate realis
 
 
 
-\## Labs Overview
+## Labs Overview
 
 
 
-\### \*\*Lab 01 – SSH Authentication Logging\*\*
+### \*\*Lab 01 – SSH Authentication Logging\*\*
 
-\- Observes how successful and failed SSH logins are recorded
+- Observes how successful and failed SSH logins are recorded
 
-\- Identifies key log fields (user, source IP, timestamp)
+- Identifies key log fields (user, source IP, timestamp)
 
-\- Establishes baseline behavior for normal vs abnormal access
-
-
-
-\### \*\*Lab 02 – SSH Brute-Force Pattern Identification\*\*
-
-\- Detects repeated failed login attempts from a single IP
-
-\- Differentiates between benign mistakes and malicious patterns
-
-\- Introduces threshold-based detection logic
+- Establishes baseline behavior for normal vs abnormal access
 
 
 
-\### \*\*Lab 03 – Fail2Ban Automated SSH Brute-Force Mitigation\*\*
+### \*\*Lab 02 – SSH Brute-Force Pattern Identification\*\*
 
-\- Implements Fail2Ban to automatically block malicious IPs
+- Detects repeated failed login attempts from a single IP
 
-\- Maps detections to defensive controls
+- Differentiates between benign mistakes and malicious patterns
 
-\- Demonstrates prevention as an extension of detection
-
-
-
-\### \*\*Lab 04 – SSH Authentication Log Triage\*\*
-
-\- Investigates suspicious login activity
-
-\- Correlates failed and successful attempts
-
-\- Simulates analyst triage and escalation decisions
+- Introduces threshold-based detection logic
 
 
 
-\### \*\*Lab 05 – Automated SSH Failed Login Analysis\*\*
+### \*\*Lab 03 – Fail2Ban Automated SSH Brute-Force Mitigation\*\*
 
-\- Uses scripting to parse authentication logs
+- Implements Fail2Ban to automatically block malicious IPs
 
-\- Extracts failed login counts and source IPs
+- Maps detections to defensive controls
 
-\- Demonstrates how automation scales manual analysis
-
-
-
----
+- Demonstrates prevention as an extension of detection
 
 
 
-\## Skills Demonstrated
+### \*\*Lab 04 – SSH Authentication Log Triage\*\*
+
+- Investigates suspicious login activity
+
+- Correlates failed and successful attempts
+
+- Simulates analyst triage and escalation decisions
 
 
 
-\- Linux log analysis
+### \*\*Lab 05 – Automated SSH Failed Login Analysis\*\*
 
-\- Detection engineering fundamentals
+- Uses scripting to parse authentication logs
 
-\- SOC-style investigative thinking
+- Extracts failed login counts and source IPs
 
-\- Brute-force attack identification
-
-\- Defensive automation concepts
-
-\- Practical use of security tooling (OpenSSH, Fail2Ban)
+- Demonstrates how automation scales manual analysis
 
 
 
@@ -120,7 +98,29 @@ The lab environment intentionally simulates attacker behavior to generate realis
 
 
 
-\## Why This Matters
+## Skills Demonstrated
+
+
+
+- Linux log analysis
+
+- Detection engineering fundamentals
+
+- SOC-style investigative thinking
+
+- Brute-force attack identification
+
+- Defensive automation concepts
+
+- Practical use of security tooling (OpenSSH, Fail2Ban)
+
+
+
+---
+
+
+
+## Why This Matters
 
 
 
@@ -132,11 +132,11 @@ These labs demonstrate the \*\*hands-on skills required to detect, investigate, 
 
 This mirrors the workflow used by:
 
-\- SOC Analysts
+- SOC Analysts
 
-\- Detection Engineers
+- Detection Engineers
 
-\- Blue Team / IR teams
+- Blue Team / IR teams
 
 
 
@@ -144,19 +144,19 @@ This mirrors the workflow used by:
 
 
 
-\## Next Steps
+## Next Steps
 
 
 
 Future iterations of this section will expand into:
 
-\- Detection tuning and false-positive reduction
+- Detection tuning and false-positive reduction
 
-\- Alert enrichment
+- Alert enrichment
 
-\- SIEM-style correlation
+- SIEM-style correlation
 
-\- Expanded automation using Python
+- Expanded automation using Python
 
 
 
