@@ -126,7 +126,7 @@ The lab environment intentionally simulates attacker behavior to generate realis
 
 SSH brute-force attacks remain one of the most common real-world threats against exposed Linux systems.  
 
-These labs demonstrate the \*\*hands-on skills required to detect, investigate, and mitigate these attacks\*\*, rather than relying solely on theoretical knowledge.
+These labs demonstrate the **hands-on skills required to detect, investigate, and mitigate these attacks**, rather than relying solely on theoretical knowledge.
 
 
 
