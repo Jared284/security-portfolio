@@ -2,7 +2,7 @@
 
 This repository documents hands-on cybersecurity labs focused on **log analysis, detection engineering, and automated defensive controls** in a Linux home lab environment.
 
-The objective of this portfolio is to demonstrate defensive security thinking — from raw telemetry to detection, triage, and automated response — in a realistic Linux environment.
+### The objective of this portfolio is to demonstrate defensive security thinking — from raw telemetry to detection, triage, and automated response — in a realistic Linux environment.
 ---
 
 ## Home Lab Overview
