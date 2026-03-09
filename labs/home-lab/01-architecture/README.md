@@ -24,10 +24,10 @@ Ubuntu Server 24.04 VM
         |
         | Authentication Logs (/var/log/auth.log)
         v
-fail2ban
+fail2ban (Detection Engine)
         |
         v
-Automated Firewall Ban
+iptables Firewall Ban
 ```
 
 ## Host Environment
