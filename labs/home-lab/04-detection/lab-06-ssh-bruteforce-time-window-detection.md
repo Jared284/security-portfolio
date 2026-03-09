@@ -12,7 +12,7 @@ This lab transitions from retrospective analysis to proactive detection engineer
 
 - Ubuntu Server with OpenSSH enabled
 - Log source: `/var/log/auth.log`
-- Detection logic implemented using Python
+- Detection logic implemented using a custom Python detection script
 - Prior context:
   - Manual SSH log triage (Lab 04)
   - Whole-file automated aggregation (Lab 05)
@@ -21,9 +21,9 @@ This lab transitions from retrospective analysis to proactive detection engineer
 
 ## Threat Model
 
-- **Attacker**: External, unauthenticated remote actor
-- **Behavior**: Rapid, repeated SSH authentication attempts using invalid credentials
-- **Assumptions**:
+- **Attacker:** External, unauthenticated remote actor
+- **Behavior:** Rapid, repeated SSH authentication attempts using invalid credentials
+- **Assumptions:**
   - SSH service is exposed
   - Authentication failures are logged locally
   - Attacker does not possess valid credentials
@@ -58,10 +58,15 @@ The detection operates as follows:
    - Timestamp
    - Source IP address
    - Targeted username (if present)
+
 2. Normalize timestamps into a comparable format
+
 3. Group failed authentication events by source IP
+
 4. Maintain a sliding time window of failures per IP
+
 5. Trigger an alert when the number of failures within the window reaches the threshold
+
 6. Output a structured alert containing context useful for analyst triage
 
 ---
@@ -126,28 +131,58 @@ with open(LOG_FILE, "r") as f:
 
 ---
 
+## Running the Detection
+
+The detection script can be executed locally on the server to analyze SSH authentication logs.
+
+```bash
+python3 ssh_bruteforce_detector.py
+```
+
+The script scans `/var/log/auth.log` and prints an alert when the defined threshold of failed authentication attempts occurs within the configured time window.
+
+---
+
 ## Test Evidence
 
 ### Test Case 1 — Brute-force burst (alert expected)
 
 **Observed pattern**
-- Five or more failed SSH login attempts
-- Same source IP
-- Occurring within approximately 60 seconds
+
+- Five or more failed SSH login attempts  
+- Same source IP  
+- Occurring within approximately 60 seconds  
 
 **Result**
+
 - Detection triggers an alert
 - Alert includes source IP, failure count, time window, and targeted usernames
+
+---
+
+### Example Alert Output
+
+```
+[ALERT] SSH Brute Force Detected
+Source IP       : 192.168.56.101
+Failed Attempts : 5
+Time Window     : 2026-03-08 14:21:01 -> 2026-03-08 14:21:57
+Usernames Tried : root, admin, ubuntu, test
+```
+
+This alert provides key context needed for analyst triage.
 
 ---
 
 ### Test Case 2 — Slow failures over time (no alert)
 
 **Observed pattern**
-- Failed logins from the same IP
-- Attempts spread across several minutes
+
+- Failed logins from the same IP  
+- Attempts spread across several minutes  
 
 **Result**
+
 - No alert triggered
 - Failures fall outside the defined time window
 
@@ -176,6 +211,7 @@ This validates that the detection differentiates burst activity from benign beha
 This lab advances prior work by introducing time-based correlation and explicit alerting logic.
 
 **Progression from Lab 05**
+
 - Whole-file aggregation → sliding time-window detection
 - Pattern identification → deterministic alert rule
 - Informational output → actionable alert
@@ -190,4 +226,3 @@ The result is a reusable detection artifact aligned with real-world SOC workflow
 - Feed confirmed malicious IPs into Fail2Ban or firewall blocklists
 - Add enrichment such as ASN or geolocation data
 - Introduce severity tiers based on failure volume
-
