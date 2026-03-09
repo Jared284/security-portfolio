@@ -1,145 +1,97 @@
 # Lab Architecture
 
+## Overview
 
+This document describes the architecture of a Linux-based detection engineering lab designed to simulate SOC-style monitoring, brute-force detection, and automated response workflows.
 
-This document describes the system design, trust boundaries, and security controls for the Linux home lab used to simulate SOC-style detection and response workflows.
-
-
+The environment focuses on **SSH authentication telemetry**, allowing controlled attack simulation and defensive detection development.
 
 ---
-
-
 
 ## Host Environment
 
+- **Host OS:** Windows 11  
+- **Virtualization Platform:** Oracle VirtualBox  
 
-
-- \*\*Host OS:\*\* Windows 11  
-
-- \*\*Virtualization Platform:\*\* Oracle VirtualBox
-
-
+The host machine acts as the **administrative control point** and the **attack simulation source**.
 
 ---
-
-
 
 ## Guest Environment
 
+- **Guest OS:** Ubuntu Server 24.04 LTS  
+- **Role:** Log generation, detection engine, and automated response system  
 
-
-- \*\*Guest OS:\*\* Ubuntu Server 24.04 LTS  
-
-- \*\*Role:\*\* Central log source and detection host
-
-
+The Ubuntu server functions as the **central log source and detection host**, monitoring authentication activity and enforcing automated security responses.
 
 ---
-
-
 
 ## Network Architecture
 
+- **Network Mode:** Host-only networking  
+- **Guest IP Address:** 192.168.56.101  
 
+### Exposed Services
 
-- \*\*Network Mode:\*\* Host-only networking  
+- SSH (TCP/22) — accessible only from the host machine
 
-- \*\*Guest IP Address:\*\* `192.168.56.101`  
-
-- \*\*Exposed Services:\*\*
-
-&nbsp; - SSH (`tcp/22`) accessible \*\*only from the host system\*\*
-
-
+This configuration restricts network access to the local virtualization host and prevents exposure to external networks.
 
 ---
-
-
 
 ## Trust Boundaries
 
+The guest system is fully isolated from external networks.
 
+Only the Windows host is permitted to initiate SSH connections.
 
-- The guest system is fully isolated from the external internet  
+All authentication activity observed in the lab environment originates from either:
 
-- Only the host machine is permitted to initiate SSH connections  
+- legitimate administrative access  
+- controlled attack simulation from the host system  
 
-- No inbound access from untrusted networks is allowed  
-
-
-
-This isolation ensures all observed authentication activity is either:
-
-- Legitimate administrative access, or
-
-- Controlled attack simulation originating from the host
-
-
+This isolation allows detection logic to be tested without interference from external traffic.
 
 ---
-
-
 
 ## Security Controls
 
+fail2ban is deployed on the Ubuntu server to monitor authentication activity and enforce automated mitigation.
 
+Security mechanisms include:
 
-- `fail2ban` deployed on the Ubuntu Server
-
-- `sshd` jail enabled and monitoring authentication logs
-
-- Threshold-based IP banning enforced automatically
-
-- Firewall rules dynamically updated to block offending source IPs
-
-
+- sshd jail monitoring authentication logs  
+- threshold-based banning of repeated failed login attempts  
+- automated firewall rule updates to block offending IP addresses  
 
 ---
 
-
-
 ## Threat Model
 
+This lab simulates common authentication attacks against SSH services.
 
+Detection logic focuses on identifying:
 
-This lab is designed to detect and respond to:
+- SSH brute-force authentication attempts  
+- repeated failed login attempts from a single source IP  
+- automated credential probing against non-existent users  
 
+The architecture intentionally limits attack surface to emphasize **detection and response behavior** rather than perimeter defense.
 
+---
 
-- SSH brute-force authentication attempts
+## Deployment Considerations
 
-- Repeated failed login activity from a single source IP
+During initial setup, outbound internet connectivity was required for package installation.
 
-- Automated credential probing against non-existent users
+A temporary NAT adapter was added to allow `apt` operations and system updates.
 
+Once dependencies were installed, the environment returned to a host-only networking configuration to maintain isolation.
 
+---
 
-The architecture intentionally limits attack surface to focus on \*\*detection logic and response behavior\*\*, rather than perimeter defense complexity.
+## Key Design Lessons
 
-
-
-## Setup and Build Decisions
-
-### Environment
-- **Host OS:** Windows 11
-- **Hypervisor:** Oracle VirtualBox
-- **Guest OS:** Ubuntu Server 24.04 LTS (amd64)
-- **Purpose:** Simulate a SOC-style Linux environment for SSH log analysis and detection engineering
-
-### Networking Design
-- The lab uses a **host-only network adapter** to restrict SSH access to the Windows host
-- This enforces an isolated trust boundary and prevents unsolicited external access
-- A **temporary NAT adapter** was added to allow outbound connectivity for package installation
-
-Initial setup attempts failed due to lack of outbound connectivity, which prevented `apt` operations.  
-This was resolved by introducing NAT for updates while preserving host-only access for SSH testing.
-
-### Services Enabled
-- OpenSSH Server (sshd)
-- fail2ban for automated SSH brute-force mitigation
-- systemd backend configured for log monitoring on Ubuntu 24.04
-
-### Design Constraints and Lessons
-- Detection logic depends on correct network reachability
-- Security controls can silently fail if traffic never reaches the host
-- Isolation must be balanced with operational needs such as updates and telemetry
+- Detection logic depends on reliable network connectivity  
+- Security controls cannot operate if attack traffic never reaches the monitored system  
+- Isolation must be balanced with operational requirements such as package installation and telemetry collection  
