@@ -8,6 +8,24 @@ The environment focuses on **SSH authentication telemetry**, allowing controlled
 
 ---
 
+## System Architecture
+
+Windows 11 Host
+(Administrator + Attack Simulation)
+        |
+        | SSH Attempts
+        v
+Ubuntu Server 24.04 VM
+        |
+        | Authentication Logs (/var/log/auth.log)
+        v
+fail2ban
+        |
+        v
+Automated Firewall Ban
+
+---
+
 ## Host Environment
 
 - **Host OS:** Windows 11  
