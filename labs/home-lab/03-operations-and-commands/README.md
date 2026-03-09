@@ -1,7 +1,9 @@
 # 03 – Operations and Commands
 
 ## Purpose
-Document the day-to-day operational commands used to monitor, triage, and investigate SSH authentication activity on the Ubuntu server.  
+
+Document the day-to-day operational commands used to monitor, triage, and investigate SSH authentication activity on the Ubuntu server.
+
 This section reflects **analyst workflow**, not setup steps.
 
 The goal is to demonstrate how signals are extracted from logs and services during routine security operations.
@@ -11,22 +13,34 @@ The goal is to demonstrate how signals are extracted from logs and services duri
 ## Common SSH Operations
 
 Check SSH service status:
-- systemctl status ssh
 
-These checks are used to confirm service availability during troubleshooting or after configuration changes.
+```
+systemctl status ssh
+```
+
+This check is used to confirm service availability during troubleshooting or after configuration changes.
 
 ---
 
 ## Authentication Log Analysis
 
 View full authentication log:
-- sudo cat /var/log/auth.log
+
+```
+sudo cat /var/log/auth.log
+```
 
 Identify failed login attempts:
-- sudo grep "Failed password" /var/log/auth.log
+
+```
+sudo grep "Failed password" /var/log/auth.log
+```
 
 Identify successful logins:
-- sudo grep "Accepted" /var/log/auth.log
+
+```
+sudo grep "Accepted" /var/log/auth.log
+```
 
 These commands provide quick visibility into authentication behavior without requiring external tooling.
 
@@ -35,7 +49,10 @@ These commands provide quick visibility into authentication behavior without req
 ## IP-Based Filtering
 
 Filter authentication events by source IP:
-- grep "from 192.168.56.101" /var/log/auth.log
+
+```
+grep "from 192.168.56.101" /var/log/auth.log
+```
 
 This is useful for validating activity from known hosts or investigating suspicious source addresses.
 
@@ -44,16 +61,28 @@ This is useful for validating activity from known hosts or investigating suspici
 ## fail2ban Operations
 
 Check fail2ban service status:
-- sudo systemctl status fail2ban
+
+```
+sudo systemctl status fail2ban
+```
 
 List all active jails:
-- sudo fail2ban-client status
+
+```
+sudo fail2ban-client status
+```
 
 Inspect the SSH jail specifically:
-- sudo fail2ban-client status sshd
+
+```
+sudo fail2ban-client status sshd
+```
 
 Manually unban an IP address:
-- sudo fail2ban-client set sshd unbanip <IP>
+
+```
+sudo fail2ban-client set sshd unbanip <IP>
+```
 
 These commands are used to validate automated enforcement and correct false positives.
 
@@ -62,7 +91,10 @@ These commands are used to validate automated enforcement and correct false posi
 ## Failed Login Aggregation
 
 Extract and summarize failed SSH login attempts by source IP:
-- grep "Failed password" /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr
+
+```
+grep "Failed password" /var/log/auth.log | awk '{print $NF}' | sort | uniq -c | sort -nr
+```
 
 This pipeline helps identify brute-force patterns by highlighting repeat offenders.
 
@@ -71,7 +103,10 @@ This pipeline helps identify brute-force patterns by highlighting repeat offende
 ## SSH Failed Login Automation
 
 Execute Python script to summarize failed login attempts:
-- python3 ssh_failed_summary.py
+
+```
+python3 ssh_failed_summary.py
+```
 
 This script automates log parsing to reduce manual effort during repeated analysis tasks.
 
