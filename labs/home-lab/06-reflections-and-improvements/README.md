@@ -1,72 +1,90 @@
 # 06 – Reflections and Improvements
 
 ## Purpose
-Capture lessons learned, operational friction, and analytical insights gained across SSH-focused security labs.
 
-This section documents **judgment development**: what worked, what failed, and how detection thinking evolved across iterations.
+Capture lessons learned, operational friction, and analytical insights gained while building and testing the SSH detection lab.
+
+This section focuses on **analyst judgment development**: what worked, what failed, and how detection thinking evolved across the labs.
 
 ---
 
 ## Lab 1 Reflection – SSH Authentication Logging
 
-### What I Learned
-- Linux records SSH authentication attempts in /var/log/auth.log
-- Successful and failed logins are clearly distinguishable
-- Invalid user attempts are logged differently from failed passwords for valid users
+### Key Observations
 
-### What Was Confusing Initially
-- Distinguishing between host OS (Windows) and guest OS (Ubuntu)
-- Understanding that SSH was initiated from Windows but executed and logged on the Ubuntu server
+- Linux records SSH authentication activity in `/var/log/auth.log`
+- Successful and failed login attempts are clearly distinguishable
+- Attempts against invalid usernames are logged differently from failed passwords for valid users
 
-### What Clicked
-- Logs are the primary source of truth for detecting access attempts
-- Even failed authentication attempts provide valuable security signal
+### Initial Confusion
 
-### Improvements for Next Labs
-- Become faster navigating logs using grep and journalctl
-- Practice identifying patterns across multiple login attempts rather than individual events
+- Distinguishing between the host system (Windows) and the guest system (Ubuntu)
+- Understanding that SSH connections originate from the Windows host but are executed and logged on the Ubuntu server
+
+### Insight
+
+Logs serve as the primary source of truth for authentication activity.  
+Even failed login attempts generate valuable telemetry for detecting suspicious behavior.
+
+### Future Improvements
+
+- Increase speed navigating logs using tools such as `grep` and `journalctl`
+- Practice identifying patterns across multiple authentication events rather than analyzing individual log entries
 
 ---
 
 ## Lab 2 Reflection – Authentication Failure Patterns
 
-This lab demonstrated that repeated authentication failures are significantly more meaningful than isolated failed logins when identifying malicious behavior.
+Repeated authentication failures are significantly more meaningful than isolated login failures when identifying potential malicious behavior.
 
-Key takeaway:
-- Analysts prioritize **frequency and repetition**, not single failures
+### Key Insight
+
+Security analysts prioritize **frequency and repetition** of events rather than single authentication failures.
+
+Pattern recognition becomes the foundation for brute-force detection.
 
 ---
 
 ## Lab 3 Reflection – Automated SSH Defense (Fail2Ban)
 
-### What I Learned
+### Key Observations
+
 - Log-based detection depends on correct network reachability
-- Fail2Ban correlates events across time, not individual failures
-- systemd backend is required for SSH log monitoring on Ubuntu 24.04
+- Fail2Ban correlates authentication failures across time windows rather than individual events
+- Ubuntu 24.04 requires the `systemd` backend for proper Fail2Ban log monitoring
 
-### What Went Wrong Initially
-- Network adapter configuration prevented SSH traffic from reaching the server
-- Detection logic appeared broken when the root cause was connectivity
+### Initial Issues
 
-### Improvements for Next Labs
-- Validate network connectivity before testing security controls
-- Add safeguards to prevent self-lockout during automated enforcement
+- Incorrect network adapter configuration prevented SSH traffic from reaching the server
+- Detection logic appeared non-functional when the root cause was network connectivity
+
+### Future Improvements
+
+- Validate network connectivity before testing detection controls
+- Implement safeguards to prevent self-lockout during automated enforcement testing
 
 ---
 
 ## Lab 4 Reflection – Log Noise vs Signal
 
-- Raw logs are noisy and difficult to interpret at scale
+Raw authentication logs contain significant noise and are difficult to interpret manually at scale.
+
+### Key Observations
+
 - Aggregation reveals intent that individual log entries obscure
-- Effective analysis focuses on **patterns**, not single events
+- Repeated authentication attempts become visible only when events are summarized
+
+Effective detection focuses on **behavioral patterns**, not isolated indicators.
 
 ---
 
 ## Overall Analyst Takeaways
 
-- Detection begins with raw logs, not tools
-- Context and aggregation matter more than isolated indicators
-- Automation should follow understanding, not replace it
-- Operational mistakes are part of building reliable detection logic
+Several important detection engineering principles emerged during this lab:
 
-These reflections inform future tuning, automation, and expansion of the lab environment.
+- Detection begins with **raw telemetry**, not external tools
+- Context and aggregation provide stronger signals than isolated events
+- Automation should follow understanding, not replace it
+- Operational mistakes are a normal part of developing reliable detection logic
+
+These insights will guide future improvements to the lab environment, including expanded attack simulations and more advanced detection techniques.
