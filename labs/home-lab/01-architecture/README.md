@@ -6,6 +6,8 @@ This document describes the architecture of a Linux-based detection engineering 
 
 The environment focuses on **SSH authentication telemetry**, allowing controlled attack simulation and defensive detection development.
 
+The lab models a simplified security operations workflow: log generation, detection logic, and automated response.
+
 ---
 
 ## System Architecture
