@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Capture lessons learned, operational friction, and analytical insights gained while building and testing the SSH detection lab.
+Capture lessons learned, operational friction, and analytical insights gained while building and testing the SSH detection lab environment.
 
 This section focuses on **analyst judgment development**: what worked, what failed, and how detection thinking evolved across the labs.
 
@@ -23,13 +23,14 @@ This section focuses on **analyst judgment development**: what worked, what fail
 
 ### Insight
 
-Logs serve as the primary source of truth for authentication activity.  
-Even failed login attempts generate valuable telemetry for detecting suspicious behavior.
+Logs serve as the primary source of truth for authentication activity.
 
-### Future Improvements
+Even failed login attempts generate valuable telemetry that can be used to detect suspicious behavior.
 
-- Increase speed navigating logs using tools such as `grep` and `journalctl`
-- Practice identifying patterns across multiple authentication events rather than analyzing individual log entries
+### Improvements for Future Analysis
+
+- Become faster navigating logs using tools such as `grep`
+- Focus on identifying patterns across multiple events rather than individual log entries
 
 ---
 
@@ -39,9 +40,9 @@ Repeated authentication failures are significantly more meaningful than isolated
 
 ### Key Insight
 
-Security analysts prioritize **frequency and repetition** of events rather than single authentication failures.
+Security analysts prioritize **frequency and repetition of events**, not single authentication failures.
 
-Pattern recognition becomes the foundation for brute-force detection.
+Aggregation by source IP makes brute-force behavior much easier to identify.
 
 ---
 
@@ -49,42 +50,102 @@ Pattern recognition becomes the foundation for brute-force detection.
 
 ### Key Observations
 
-- Log-based detection depends on correct network reachability
-- Fail2Ban correlates authentication failures across time windows rather than individual events
+- Fail2Ban converts log-based detection signals into automated defensive controls
+- Authentication failures are correlated across a time window rather than evaluated individually
 - Ubuntu 24.04 requires the `systemd` backend for proper Fail2Ban log monitoring
 
-### Initial Issues
+### Operational Issue Encountered
 
-- Incorrect network adapter configuration prevented SSH traffic from reaching the server
-- Detection logic appeared non-functional when the root cause was network connectivity
+Initial tests suggested the detection logic was not working.
 
-### Future Improvements
+The root cause was incorrect network adapter configuration, which prevented SSH traffic from reaching the server.
 
-- Validate network connectivity before testing detection controls
-- Implement safeguards to prevent self-lockout during automated enforcement testing
+### Lesson Learned
+
+Security controls cannot function if underlying telemetry is missing.
+
+Validating **network connectivity and log generation** should always occur before testing detection logic.
 
 ---
 
 ## Lab 4 Reflection – Log Noise vs Signal
 
-Raw authentication logs contain significant noise and are difficult to interpret manually at scale.
+Raw authentication logs contain large volumes of data that are difficult to interpret manually.
 
 ### Key Observations
 
-- Aggregation reveals intent that individual log entries obscure
-- Repeated authentication attempts become visible only when events are summarized
+- Individual failed login attempts are low-signal events
+- Aggregating authentication failures reveals attacker intent
+- Patterns across time and source IP provide stronger indicators of malicious behavior
 
-Effective detection focuses on **behavioral patterns**, not isolated indicators.
+### Analyst Insight
+
+Detection engineering often begins with **manual investigation**, where analysts identify patterns before translating them into automation.
+
+---
+
+## Lab 5 Reflection – Automating Log Analysis
+
+Manual investigation performed in earlier labs was converted into a repeatable automated workflow.
+
+### Key Observations
+
+- Simple scripting can significantly accelerate log triage
+- Automation allows analysts to identify suspicious IPs quickly without scanning raw logs
+- Aggregation logic used by analysts can often be translated directly into scripts
+
+### Key Insight
+
+Automation should **augment analyst workflows**, not replace them.
+
+Understanding the underlying log behavior is critical before building automated analysis tools.
+
+---
+
+## Lab 6 Reflection – Time-Window Detection (Detection-as-Code)
+
+This lab introduced time-based correlation and alert generation.
+
+Instead of simply aggregating failures across an entire log file, detection logic was implemented to identify bursts of authentication failures within a defined time window.
+
+### Key Observations
+
+- Time-based detection helps distinguish automated attacks from sporadic user errors
+- Detection logic can be expressed programmatically as **Detection-as-Code**
+- Structured alerts provide analysts with faster triage context
+
+### Analyst Insight
+
+Effective detection engineering requires moving from:
+
+```
+retrospective analysis
+→ automated detection
+→ actionable alerts
+```
+
+This progression mirrors how security teams operationalize detection logic in production environments.
 
 ---
 
 ## Overall Analyst Takeaways
 
-Several important detection engineering principles emerged during this lab:
+Several core detection engineering principles emerged during this lab project:
 
-- Detection begins with **raw telemetry**, not external tools
-- Context and aggregation provide stronger signals than isolated events
+- Detection begins with **raw telemetry**, not security tools
+- Aggregation and correlation provide stronger signals than individual events
 - Automation should follow understanding, not replace it
-- Operational mistakes are a normal part of developing reliable detection logic
+- Network and logging visibility are prerequisites for effective detection
+- Security controls must be validated through realistic attack simulation
 
-These insights will guide future improvements to the lab environment, including expanded attack simulations and more advanced detection techniques.
+---
+
+## Future Improvements
+
+Potential expansions to this lab environment include:
+
+- Translating detection logic into SIEM queries (Splunk SPL, Elastic DSL, Sentinel KQL)
+- Enriching alerts with geolocation or IP reputation data
+- Simulating distributed brute-force attacks from multiple IP addresses
+- Introducing credential stuffing or password spraying scenarios
+- Centralizing authentication logs for cross-host detection analysis
