@@ -1,4 +1,4 @@
-# 02 – Setup and Build
+# 02 – Environment Setup and Build
 
 ## Objective
 
@@ -10,19 +10,19 @@ This environment serves as the infrastructure foundation for all subsequent dete
 
 ## Environment & Tooling
 
-Host OS
+**Host OS**
 - Windows 11
 
-Hypervisor
+**Hypervisor**
 - Oracle VirtualBox
 
-Guest OS
+**Guest OS**
 - Ubuntu Server 24.04.3 LTS (amd64)
 
-Virtual Machine
+**Virtual Machine**
 - ubuntu-server-lab
 
-Primary Services
+**Primary Services**
 - OpenSSH Server (sshd)
 - Fail2Ban
 
@@ -30,16 +30,16 @@ Primary Services
 
 ## Network Architecture
 
-Host-Only Adapter
+**Host-Only Adapter**
 - Purpose: Maintain isolation while allowing SSH access from the Windows host
 - Guest IP: 192.168.56.101
 
-NAT Adapter (Temporary)
+**NAT Adapter (Temporary)**
 - Purpose: Enable outbound internet access for package installation
 - Used only during setup
 - Retained alongside host-only to preserve the isolation model
 
-Design Tradeoff
+### Design Tradeoff
 
 Host-only networking alone prevented outbound connectivity, which caused package management operations such as `apt update` to fail.
 
@@ -51,7 +51,7 @@ The objective was to maintain a controlled attack surface while still allowing r
 
 ## Build Process (High-Level)
 
-1. Provisioned Ubuntu Server 24.04 VM using VirtualBox  
+1. Provisioned Ubuntu Server 24.04 VM within VirtualBox  
 2. Configured Host-Only Adapter to allow SSH access only from the Windows host  
 3. Verified network configuration using `ip a`  
 4. Installed and enabled OpenSSH Server  
@@ -97,7 +97,8 @@ These decisions preserve maintainability and ensure the lab environment mirrors 
 
 ## Validation
 
-- Successful SSH authentication from the Windows host confirmed network reachability
+- Successful SSH authentication from the Windows host confirmed SSH connectivity
+- SSH access validated on TCP port 22 from the Windows host
 - `systemctl status ssh` verified SSH service health
 - `systemctl status fail2ban` confirmed Fail2Ban service startup
 - SSH authentication events verified in `/var/log/auth.log`
