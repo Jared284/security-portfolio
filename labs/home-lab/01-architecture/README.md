@@ -1,5 +1,7 @@
 # Lab Architecture
 
+---
+
 ## Overview
 
 This document describes the architecture of a Linux-based detection engineering lab designed to simulate SOC-style monitoring, brute-force detection, and automated response workflows.
