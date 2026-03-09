@@ -10,8 +10,9 @@ The environment focuses on **SSH authentication telemetry**, allowing controlled
 
 ## System Architecture
 
+```
 Windows 11 Host
-(Administrator + Attack Simulation)
+(Admin + Attack Simulation)
         |
         | SSH Attempts
         v
@@ -23,8 +24,7 @@ fail2ban
         |
         v
 Automated Firewall Ban
-
----
+```
 
 ## Host Environment
 
