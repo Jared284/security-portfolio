@@ -1,9 +1,10 @@
-# Linux SSH Brute-Force Detection Lab
+# SSH Brute Force Detection & Prevention (Linux / AWS)
 
-This project is a **hands-on detection engineering lab** that simulates SSH brute-force attacks against a Linux server and demonstrates how defenders can detect, investigate, and mitigate them using system logs.
+## Overview
 
-The lab progresses from **raw log analysis to automated detection logic**, mirroring how security teams build detections in real-world SOC environments.
+Built an end-to-end detection engineering lab to simulate real-world SSH brute force attacks and implement automated detection and mitigation using Linux authentication logs and Fail2Ban.
 
+The system captures authentication telemetry, identifies repeated failed login attempts, and automatically blocks malicious IP addresses, modeling a simplified SOC detection and response workflow.
 ---
 
 # Project Overview
