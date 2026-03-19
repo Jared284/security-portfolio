@@ -128,19 +128,45 @@ This event provided a reference point for distinguishing normal authentication b
 
 ## Scenario 5 – SSH Brute Force Attack Simulation
 
-To simulate a brute-force attack, repeated SSH login attempts were made against the exposed server using invalid credentials.
+To simulate a brute-force attack, repeated SSH login attempts were made against the exposed EC2 instance using invalid credentials.
 
-Observed behavior:
+### Attack Execution
 
-- multiple failed login attempts
-- repeated authentication failures from the same IP
-- rapid succession of login attempts
+    ssh fakeuser@52.204.131.152
+
+### Result
+
+The connection to the server was successfully established, but authentication failed:
+
+- `Permission denied (publickey)` indicates that the server is configured to only allow key-based authentication  
+- No valid private key was provided for the attempted user  
+- The login attempt was rejected without granting shell access  
 
 ### Evidence
 
-The following screenshot shows a failed SSH login attempt using invalid credentials:
+The screenshot below shows a failed SSH authentication attempt from the attacker machine:
 
 ![SSH Failed Login Attempt](01-ssh-failed-login.png)
+
+### Security Insight
+
+This behavior demonstrates:
+
+- the server is reachable over port 22 (SSH exposed)  
+- authentication is enforced via public key (stronger than password-based auth)  
+- failed login attempts are generated and logged for detection  
+
+### Detection Relevance
+
+Each failed login attempt generates entries in:
+
+    /var/log/auth.log
+
+These logs can be used to detect:
+
+- repeated login attempts from the same IP  
+- brute-force patterns (high frequency failures)  
+- unauthorized access attempts  
 
 ---
 
