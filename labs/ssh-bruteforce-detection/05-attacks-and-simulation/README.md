@@ -138,8 +138,7 @@ Observed behavior:
 
 ### Evidence
 
-![SSH Attack](./01-ssh-failed-login.png)
-
+![SSH Failed Login Attempt](01-ssh-failed-login.png)
 ---
 
 ## Telemetry Generated
