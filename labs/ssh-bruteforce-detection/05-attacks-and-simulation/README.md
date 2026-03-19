@@ -144,29 +144,21 @@ The connection to the server was successfully established, but authentication fa
 
 ### Evidence
 
+#### Step 1 – Initial Failed Login Attempt
+
 The screenshot below shows a failed SSH authentication attempt from the attacker machine:
 
 ![SSH Failed Login Attempt](01-ssh-failed-login.png)
 
-### Security Insight
+---
 
-This behavior demonstrates:
+#### Step 2 – Fail2Ban Detection
 
-- the server is reachable over port 22 (SSH exposed)  
-- authentication is enforced via public key (stronger than password-based auth)  
-- failed login attempts are generated and logged for detection  
+Fail2Ban monitored authentication logs and detected repeated failed login attempts from the same source IP.
 
-### Detection Relevance
+This confirms that the system identified behavior consistent with a brute-force attack.
 
-Each failed login attempt generates entries in:
-
-    /var/log/auth.log
-
-These logs can be used to detect:
-
-- repeated login attempts from the same IP  
-- brute-force patterns (high frequency failures)  
-- unauthorized access attempts  
+![Fail2Ban Detection](02-fail2ban-detection.png)
 
 ---
 
