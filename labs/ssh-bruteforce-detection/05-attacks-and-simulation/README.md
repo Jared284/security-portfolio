@@ -138,7 +138,10 @@ Observed behavior:
 
 ### Evidence
 
+The following screenshot shows a failed SSH login attempt using invalid credentials:
+
 ![SSH Failed Login Attempt](01-ssh-failed-login.png)
+
 ---
 
 ## Telemetry Generated
