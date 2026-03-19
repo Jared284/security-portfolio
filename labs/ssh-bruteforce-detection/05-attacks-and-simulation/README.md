@@ -162,12 +162,69 @@ This confirms that the system identified behavior consistent with a brute-force 
 
 ---
 
+#### Step 3 – IP Banned
+
+After repeated failed login attempts were detected, Fail2Ban automatically banned the attacking IP address.
+
+This demonstrates an active defensive response, not just passive detection.
+
+![IP Banned](03-ip-banned.png)
+
+---
+
+#### Step 4 – Fail2Ban Status Verification
+
+The Fail2Ban service was checked to confirm that protection mechanisms were active and enforcing bans.
+
+This validates that the system is operational and responding to threats in real time.
+
+![Fail2Ban Status](04-fail2ban-status.png)
+
+#### Step 5 – Authentication Log Evidence
+
+System authentication logs show repeated failed login attempts originating from the same attacker IP.
+
+These logs provide the raw telemetry used for detection and automated response.
+
+![Auth Log Evidence](05-ssh-bruteforce-log.png)
+
+---
+
+#### Step 6 – Attacker IP Analysis
+
+The attacking IP address was analyzed to identify patterns and confirm malicious behavior.
+
+This step mirrors real-world SOC workflows where analysts investigate suspicious sources.
+
+![Attacker IP Analysis](06-attacker-ip-analysis.png)
+
+---
+
+#### Step 7 – WHOIS Analysis
+
+A WHOIS lookup was performed on the attacker IP to gather additional intelligence about its origin.
+
+This helps determine whether the activity is likely from a known hosting provider, botnet infrastructure, or malicious network.
+
+![WHOIS Analysis](07-attacker-whois-analysis.png)
+
+---
+
+#### Step 8 – Jail Status Confirmation
+
+Fail2Ban jail status was reviewed to confirm that the attacker IP remains actively banned.
+
+This ensures that mitigation is persistent and functioning as expected.
+
+![Fail2Ban Jail Status](08-fail2ban-jail-status.png)
+
 ## Telemetry Generated
 
 All authentication activity generated during attack simulation was recorded in:
 
 ```
 /var/log/auth.log
+
 ```
 
 These logs served as the primary data source for:
