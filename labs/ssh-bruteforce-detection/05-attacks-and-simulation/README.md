@@ -126,6 +126,22 @@ This event provided a reference point for distinguishing normal authentication b
 
 ---
 
+## Scenario 5 – SSH Brute Force Attack Simulation
+
+To simulate a brute-force attack, repeated SSH login attempts were made against the exposed server using invalid credentials.
+
+Observed behavior:
+
+- multiple failed login attempts
+- repeated authentication failures from the same IP
+- rapid succession of login attempts
+
+### Evidence
+
+![SSH Attack](./01-ssh-failed-login.png)
+
+---
+
 ## Telemetry Generated
 
 All authentication activity generated during attack simulation was recorded in:
