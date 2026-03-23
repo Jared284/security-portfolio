@@ -59,3 +59,6 @@ User A:
 User B:
 - userId: user-002
 - owns account: acc-456
+
+Note:
+To efficiently query transactions by accountId, a secondary index (GSI) may be used on accountId.
