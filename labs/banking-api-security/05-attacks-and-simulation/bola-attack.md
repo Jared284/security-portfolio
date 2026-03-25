@@ -55,3 +55,19 @@ In a real banking environment, this could expose:
 The attack was successful.
 
 The API returned account data for a different account when the object identifier in the request path was changed.
+
+## Evidence
+
+### Request for Account 123
+
+This request returns data for the first account using its direct object identifier.
+
+![Account 123 Request](../screenshots/attacks/bola-request-acc-123.png)
+
+---
+
+### Modified Request for Account 456
+
+This request changes only the object identifier in the path and returns a different user's account data.
+
+![Account 456 Request](../screenshots/attacks/bola-request-acc-456.png)
