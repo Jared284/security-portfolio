@@ -1,9 +1,31 @@
-## IAM Permission Issue
+## Evidence
 
-During initial testing, the Lambda function failed with an `AccessDeniedException` when attempting to read from DynamoDB.
+### Permission Error
 
-This occurred because the Lambda execution role did not have permission to perform `dynamodb:GetItem`.
+Initial execution failed due to missing DynamoDB permissions.
 
-The issue was resolved by attaching the `AmazonDynamoDBFullAccess` policy to the Lambda execution role.
+![Permission Error](../screenshots/lambda/lambda-permission-error.png)
 
-After applying the policy, the function successfully retrieved account data from the `Accounts` table.
+---
+
+### Lambda Code
+
+The following implementation retrieves account data based solely on the provided accountId.
+
+![Lambda Code](../screenshots/lambda/lambda-code-get-account.png)
+
+---
+
+### Test Result - Account 123
+
+This confirms normal functionality for a valid account.
+
+![Account 123](../screenshots/lambda/lambda-test-acc-123.png)
+
+---
+
+### Test Result - Account 456
+
+This shows the function also returns data for a different account when requested directly.
+
+![Account 456](../screenshots/lambda/lambda-test-acc-456.png)
