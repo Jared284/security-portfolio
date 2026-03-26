@@ -14,7 +14,7 @@ GET /accounts/{accountId}
 
 Base URL:
 
-https://YOUR-INVOKE-URL
+[[YOUR-INVOKE-URL](https://ucu7ig9pl2.execute-api.us-east-1.amazonaws.com)](https://ucu7ig9pl2.execute-api.us-east-1.amazonaws.com)
 
 ---
 
