@@ -14,7 +14,7 @@ GET /accounts/{accountId}
 
 Base URL:
 
-[[YOUR-INVOKE-URL](https://ucu7ig9pl2.execute-api.us-east-1.amazonaws.com)](https://ucu7ig9pl2.execute-api.us-east-1.amazonaws.com)
+https://YOUR-INVOKE-URL
 
 ---
 
@@ -28,5 +28,36 @@ x-user-id: <user-id>
 
 ## Example: Authorized Request
 
-```bash
-curl -H "x-user-id: user-001" https://YOUR-INVOKE-URL/accounts/acc-123
+`curl -H "x-user-id: user-001" https://YOUR-INVOKE-URL/accounts/acc-123`
+
+Expected result:
+- 200 OK
+- account data returned
+
+---
+
+## Example: Unauthorized Request
+
+`curl -H "x-user-id: user-001" https://YOUR-INVOKE-URL/accounts/acc-456`
+
+Expected result:
+- 403 Unauthorized
+- access denied
+
+---
+
+## Vulnerable Behavior (Pre-Fix)
+
+`curl https://YOUR-INVOKE-URL/accounts/acc-456`
+
+Result:
+- account data returned with no identity required
+- demonstrates unrestricted access
+
+---
+
+## Notes
+
+- Requests can be tested using curl or Postman
+- The x-user-id header simulates authenticated user identity
+- This approach is used for controlled testing of authorization logic
