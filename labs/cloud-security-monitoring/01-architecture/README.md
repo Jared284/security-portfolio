@@ -121,19 +121,32 @@ Together, these components support a basic but realistic cloud security monitori
 
 ---
 
-## Diagram Requirements
+## Architecture Diagram
 
-The final architecture diagram for this lab should show:
+```mermaid
+flowchart TD
 
-- one Linux EC2 instance
-- host logs flowing from EC2 to CloudWatch Logs
-- AWS account activity flowing into CloudTrail
-- CloudTrail delivering logs to S3
-- CloudWatch metric filters and alarms evaluating log activity
-- SNS sending notifications when detections trigger
+    subgraph H1["Host-Level Monitoring Path"]
+        A[Attacker / Test Activity<br/>Repeated SSH Attempts]
+        B[EC2 Linux Instance<br/>/var/log/auth.log]
+        C[CloudWatch Agent]
+        D[CloudWatch Logs<br/>EC2 Auth Log Group]
+        E[Metric Filter<br/>Failed SSH Login Pattern]
+        F[CloudWatch Alarm]
+        G[SNS Notification]
+        A --> B --> C --> D --> E --> F --> G
+    end
 
-The diagram should clearly separate:
-
-- host-level telemetry
-- AWS control-plane telemetry
-- detection and alerting components
+    subgraph H2["AWS Control-Plane Monitoring Path"]
+        H[AWS Account Activity<br/>Console / API Events]
+        I[CloudTrail]
+        J[S3 Bucket<br/>Trail Log Storage]
+        K[CloudWatch Logs<br/>CloudTrail Log Group]
+        L[Metric Filter<br/>Suspicious CloudTrail Activity]
+        M[CloudWatch Alarm]
+        N[SNS Notification]
+        H --> I
+        I --> J
+        I --> K
+        K --> L --> M --> N
+    end
