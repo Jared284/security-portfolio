@@ -123,30 +123,32 @@ Together, these components support a basic but realistic cloud security monitori
 
 ## Architecture Diagram
 
-```mermaid
-flowchart TD
+```text
+HOST-LEVEL MONITORING PATH
+Attacker / Test Activity
+        ↓
+EC2 Linux Instance (/var/log/auth.log)
+        ↓
+CloudWatch Agent
+        ↓
+CloudWatch Logs (EC2 Auth Log Group)
+        ↓
+Metric Filter: Failed SSH Login Pattern
+        ↓
+CloudWatch Alarm
+        ↓
+SNS Notification
 
-    subgraph H1["Host-Level Monitoring Path"]
-        A[Attacker / Test Activity<br/>Repeated SSH Attempts]
-        B[EC2 Linux Instance<br/>/var/log/auth.log]
-        C[CloudWatch Agent]
-        D[CloudWatch Logs<br/>EC2 Auth Log Group]
-        E[Metric Filter<br/>Failed SSH Login Pattern]
-        F[CloudWatch Alarm]
-        G[SNS Notification]
-        A --> B --> C --> D --> E --> F --> G
-    end
 
-    subgraph H2["AWS Control-Plane Monitoring Path"]
-        H[AWS Account Activity<br/>Console / API Events]
-        I[CloudTrail]
-        J[S3 Bucket<br/>Trail Log Storage]
-        K[CloudWatch Logs<br/>CloudTrail Log Group]
-        L[Metric Filter<br/>Suspicious CloudTrail Activity]
-        M[CloudWatch Alarm]
-        N[SNS Notification]
-        H --> I
-        I --> J
-        I --> K
-        K --> L --> M --> N
-    end
+AWS CONTROL-PLANE MONITORING PATH
+AWS Account Activity (Console / API Events)
+        ↓
+CloudTrail
+        ├──→ S3 Bucket (Trail Log Storage)
+        └──→ CloudWatch Logs (CloudTrail Log Group)
+                    ↓
+          Metric Filter: Suspicious CloudTrail Activity
+                    ↓
+              CloudWatch Alarm
+                    ↓
+              SNS Notification
