@@ -63,7 +63,7 @@ This mirrors how blue teams develop detection logic in real environments.
 ## Repository Structure
 
 ~~~text
-labs/ssh-bruteforce-detection
+labs/01-ssh-bruteforce-detection
 │
 ├── 01-architecture
 │   └── Lab environment design and trust boundaries
