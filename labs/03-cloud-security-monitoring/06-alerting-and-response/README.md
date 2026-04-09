@@ -126,7 +126,7 @@ Even with those limitations, this phase provides strong proof that the lab can m
 
 ### SNS Email Alert Delivery
 
-![Email notification showing successful delivery of the invalid-user SSH alarm](../screenshots/sns-email-invalid-user-alarm-icloud.png)
+![Email notification showing successful delivery of the invalid-user SSH alarm](../screenshots/sns-email-invalid-user-alarm-icloud.png.jpeg)
 
 ## Key Takeaway
 
