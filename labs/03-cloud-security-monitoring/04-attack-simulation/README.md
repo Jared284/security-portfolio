@@ -69,8 +69,13 @@ This confirmed that the simulated SSH activity produced the exact host-level tel
 
 ## Evidence
 
-- `ssh-invalid-user-attempts-terminal.png`
-- `auth-log-invalid-user-events.png`
+### Local Attack Simulation
+
+![Repeated invalid-user SSH attempts from the local workstation](../screenshots/ssh-invalid-user-attempts-terminal.png)
+
+### Host Log Validation
+
+![EC2 auth.log entries showing invalid-user SSH attempts](../screenshots/auth-log-invalid-user-events.png)
 
 ## Key Takeaway
 
