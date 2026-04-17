@@ -2,21 +2,22 @@
 
 ## Current Reflection
 
-This lab has already become much stronger than a basic AWS logging demo because it moved beyond setup and into real validation.
+This lab is now much stronger than a basic AWS logging demo because it moved beyond setup and into real validation across two different telemetry sources.
 
-At this stage, I have successfully built and validated the host-side monitoring path of the project. That includes:
+At this stage, I have successfully built and validated both:
 
-- forwarding Linux authentication logs from an EC2 instance into CloudWatch Logs
-- creating a custom metric from `Invalid user` SSH events
-- configuring a CloudWatch alarm on that metric
-- routing the alarm through Amazon SNS
-- validating end-to-end email delivery after troubleshooting the notification path
+- a **host-side monitoring path** based on Linux authentication logs from an EC2 instance
+- a **cloud-side monitoring path** based on AWS control-plane activity captured through CloudTrail
 
-That validation work mattered because it proved the pipeline was functioning across multiple layers rather than just existing on paper.
+That matters because it shows the lab is not limited to one narrow signal type. Instead, it demonstrates monitoring across both workload-level and administrative activity in AWS.
 
 ## What This Lab Does Well So Far
 
-The strongest part of the lab right now is the full host-based signal path:
+The strongest part of the lab right now is that it contains two complete monitoring pipelines.
+
+### 1. Host-Side Signal Path
+
+The host-side path demonstrates:
 
 1. external SSH activity was simulated from a local workstation
 2. the EC2 instance recorded the activity in `/var/log/auth.log`
@@ -25,9 +26,32 @@ The strongest part of the lab right now is the full host-based signal path:
 5. a CloudWatch alarm evaluated the threshold condition
 6. Amazon SNS delivered the resulting alert by email
 
-This is valuable because it shows the difference between merely configuring cloud services and actually validating a security monitoring workflow end to end.
+This is valuable because it shows how host-level authentication telemetry can be turned into a real detection and alerting workflow.
 
-The lab also benefits from being organized into separate sections for architecture, build, ingestion, attack simulation, detection engineering, and alerting. That structure makes the project easier to explain and defend.
+### 2. CloudTrail-Side Signal Path
+
+The cloud-side path demonstrates:
+
+1. a controlled security group rule change was made in AWS
+2. CloudTrail recorded the resulting `RevokeSecurityGroupIngress` event
+3. the event was available in CloudWatch Logs
+4. a metric filter converted that event into a custom metric
+5. a CloudWatch alarm evaluated the event against a threshold
+6. Amazon SNS delivered the resulting alert by email
+
+This is valuable because it shows that the lab can monitor not only activity inside a Linux host, but also security-relevant administrative actions at the AWS control-plane level.
+
+### Why That Matters
+
+Together, these two signal paths make the project more credible because they demonstrate:
+
+- multi-source telemetry collection
+- centralized monitoring in AWS
+- basic cloud-native detection engineering
+- threshold-based alerting
+- end-to-end validation of security controls
+
+The project also benefits from being organized into separate sections for architecture, build, ingestion, attack simulation, detection engineering, alerting, and reflections. That structure makes it easier to explain and defend.
 
 ## Challenges Encountered
 
@@ -39,46 +63,53 @@ That troubleshooting process helped isolate the problem correctly:
 
 - the host logs were working
 - CloudWatch log ingestion was working
-- the metric filter was working
-- the CloudWatch alarm was working
+- the metric filters were working
+- the CloudWatch alarms were working
 - the original email endpoint path was unstable
 - switching to a different email endpoint allowed end-to-end delivery validation to complete successfully
 
 This was a useful reminder that alert delivery paths need to be validated just as carefully as the detection logic itself.
 
+Another useful lesson came from working with CloudTrail and CloudWatch Logs. The log search workflow was not always the fastest way to identify the correct control-plane event, and CloudTrail Event history was a more effective way to confirm the exact AWS administrative event name before building the detection rule.
+
+That mattered because it reinforced the importance of validating the event source and event name directly rather than guessing and building a filter blindly.
+
 ## Current Limitations
 
-Although the host-side path is validated, the overall lab is still incomplete.
+Even though the lab is much stronger now, it is still not complete.
 
 The main limitations right now are:
 
-- only one primary host-based detection has been fully engineered and validated
-- the CloudTrail-side detection path has not yet been built out to the same level
+- the host-side detection path still centers on one main SSH-related behavior
+- the CloudTrail-side detection path currently centers on one main event type: `RevokeSecurityGroupIngress`
 - alerting is currently email-based only
 - there is no automated response or remediation action
-- the implemented detection uses simple string matching rather than deeper log parsing or event correlation
+- the host-side detection uses simple string matching rather than richer parsing
+- the cloud-side detection uses a single-event filter rather than broader control-plane correlation
 - the lab does not yet correlate host-level activity with AWS control-plane activity
 
-These limitations do not weaken the completed host-side work, but they do define what still needs to be improved for the lab to feel fully mature.
+These limitations do not weaken the validated work that already exists, but they do define what still needs to improve for the project to feel more mature.
 
 ## Most Important Next Improvements
 
-The highest-priority next step is to build the CloudTrail-side detection path so the lab fully reflects both telemetry sources described in the project scope.
+The biggest next improvement is to expand the cloud-side detection coverage beyond a single security group rule removal event.
 
-That means implementing one or more detections for AWS control-plane activity, such as:
+That means implementing additional CloudTrail-based detections for AWS administrative activity, such as:
 
-- security group modifications
-- failed console login activity
+- security group rule additions
+- failed AWS console login activity
 - IAM policy, role, or user changes
 - suspicious administrative API activity
+- trail modification or disablement attempts
 
 Beyond that, the lab could be improved further by:
 
 - adding more than one host-based detection rule
-- tightening threshold logic to reduce noise
+- tightening thresholds and alerting logic to reduce noise
 - adding automated response options
 - improving screenshot consistency and diagram polish
 - documenting analyst follow-up steps more deeply for each alert type
+- clarifying how host-side and cloud-side detections complement each other
 
 ## What I Would Improve in a Future Version
 
@@ -86,17 +117,23 @@ In a more advanced version of this lab, I would want to push it beyond basic Clo
 
 Future improvements could include:
 
-- richer CloudTrail detections
-- multiple host-based detections instead of only one
+- richer CloudTrail detections across more AWS services
+- multiple host-based detections instead of only one SSH-focused rule
 - correlation between host telemetry and cloud administrative events
 - automated remediation or containment actions
 - clearer severity tiers for different alert types
 - more formal investigation playbooks for each detection
+- better architectural visualization of the two monitoring paths
 
-I would also want to tighten the architecture narrative so the project more clearly shows the relationship between host visibility and cloud control-plane visibility.
+I would also want to strengthen the narrative around why different telemetry sources matter and how they can be used together to improve visibility.
 
 ## Key Takeaway
 
-The most important outcome so far is that this lab already proves I can build and validate a real monitoring path in AWS from raw host telemetry to actionable alert delivery.
+The most important outcome so far is that this lab now proves I can build and validate real monitoring paths in AWS across both:
 
-At the same time, the project is not finished, and that matters. The next phase is to bring the CloudTrail side of the lab up to the same standard so the final project shows both host-level and cloud-level security monitoring depth.
+- host-level Linux authentication telemetry
+- AWS control-plane activity captured through CloudTrail
+
+That is a meaningful step up from a simple AWS setup exercise.
+
+At the same time, the project is still unfinished, and that matters. The next phase is to expand the number and quality of detections so the final lab shows broader cloud detection engineering depth rather than just two validated signal paths.
