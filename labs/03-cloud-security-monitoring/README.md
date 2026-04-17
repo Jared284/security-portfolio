@@ -41,7 +41,7 @@ Specifically, it shows that I can:
 
 ## Telemetry Sources
 
-This lab currently focuses on two telemetry sources.
+This lab focuses on two telemetry sources.
 
 ### 1. Host-Level Authentication Logs
 
@@ -64,7 +64,7 @@ CloudTrail is configured to send logs to:
 - **S3** for storage
 - **CloudWatch Logs** for monitoring
 
-This creates the foundation for cloud-side detections involving AWS administrative actions and account activity.
+This telemetry is used to detect security-relevant AWS administrative activity, including security group ingress rule removal events.
 
 ## Lab Architecture
 
@@ -76,6 +76,11 @@ At a high level, the lab works like this:
 4. CloudWatch metric filters turn selected log patterns into custom metrics
 5. CloudWatch alarms evaluate those metrics against defined thresholds
 6. Amazon SNS sends notifications when alarm conditions are met
+
+This creates two parallel monitoring paths inside the same lab:
+
+- a **host-side path** based on Linux authentication telemetry
+- a **cloud-side path** based on CloudTrail control-plane events
 
 ## Project Structure
 
@@ -95,7 +100,7 @@ At a high level, the lab works like this:
 
 ### Completed Build Components
 
-The following components have already been built:
+The following components have been built:
 
 - S3 bucket for CloudTrail log storage
 - SNS topic for alert delivery
@@ -104,16 +109,20 @@ The following components have already been built:
 - EC2 Ubuntu monitoring host
 - IAM role for EC2 CloudWatch access
 - CloudWatch Agent installation and configuration
-- Forwarding of `/var/log/auth.log` into CloudWatch Logs
-- Custom metric filter for invalid-user SSH attempts
+- forwarding of `/var/log/auth.log` into CloudWatch Logs
+- custom metric filter for invalid-user SSH attempts
 - CloudWatch alarm for repeated invalid-user SSH activity
+- custom metric filter for `RevokeSecurityGroupIngress` CloudTrail events
+- CloudWatch alarm for security group ingress rule removal activity
 - SNS-based email notification path
 
 ### Completed Validation Work
 
-The host-based monitoring path has been validated end to end.
+Both the host-side and cloud-side monitoring paths have now been validated end to end.
 
-This validation included:
+### Host-Side Validation
+
+The host-based monitoring path was validated by:
 
 - generating repeated fake SSH login attempts against the EC2 host
 - confirming `Invalid user` entries in `/var/log/auth.log`
@@ -122,9 +131,21 @@ This validation included:
 - confirming the CloudWatch alarm entered the `ALARM` state
 - confirming SNS email alert delivery
 
+### CloudTrail-Side Validation
+
+The CloudTrail-based monitoring path was validated by:
+
+- making a controlled security group rule change on the EC2 instance’s attached security group
+- identifying the resulting CloudTrail event `RevokeSecurityGroupIngress`
+- confirming the event in CloudTrail Event history
+- confirming the event was matched by the CloudWatch metric filter
+- confirming the custom metric `RevokeSecurityGroupIngressEvents`
+- confirming the CloudWatch alarm entered the `ALARM` state
+- confirming SNS email alert delivery
+
 ## Detection Implemented So Far
 
-### Host-Based Detection
+### 1. Host-Based Detection
 
 The first implemented detection focuses on repeated invalid-user SSH login attempts against the EC2 instance.
 
@@ -135,7 +156,44 @@ This detection uses:
 - **Metric namespace:** `CloudSecurityMonitoring`
 - **Metric name:** `InvalidUserSSHAttempts`
 
-This metric is then used to trigger a CloudWatch alarm when the threshold is exceeded.
+This metric is used to trigger a CloudWatch alarm when repeated invalid-user SSH activity exceeds the configured threshold.
+
+### 2. CloudTrail-Based Detection
+
+The second implemented detection focuses on AWS security group ingress rule removal activity.
+
+This detection uses:
+
+- **Telemetry source:** CloudTrail
+- **CloudWatch Logs log group:** `cloud-security-monitoring-cloudtrail`
+- **Event source:** `ec2.amazonaws.com`
+- **Event name:** `RevokeSecurityGroupIngress`
+- **Metric namespace:** `CloudSecurityMonitoring`
+- **Metric name:** `RevokeSecurityGroupIngressEvents`
+
+This metric is used to trigger a CloudWatch alarm when a matching security group ingress rule removal event is detected.
+
+## Alerting Implemented So Far
+
+The lab currently includes two CloudWatch alarms:
+
+### Host-Side Alarm
+
+- **Alarm name:** `invalid-user-ssh-attempts-alarm`
+- **Signal:** repeated invalid-user SSH attempts
+- **Threshold:** greater than `3` within `5` minutes
+
+### CloudTrail-Side Alarm
+
+- **Alarm name:** `revoke-security-group-ingress-alarm`
+- **Signal:** `RevokeSecurityGroupIngress` CloudTrail events
+- **Threshold:** greater than or equal to `1` within `5` minutes
+
+Both alarms publish notifications to the SNS topic:
+
+```text
+cloud-security-monitoring-alerts
+```
 
 ## Screenshots and Evidence
 
@@ -146,8 +204,9 @@ Examples include:
 - attacker-side SSH attempts
 - host log validation
 - CloudWatch log ingestion
+- CloudTrail event validation
 - metric filter configuration
-- metric validation
+- custom metric validation
 - CloudWatch alarm state changes
 - SNS email notification delivery
 
@@ -157,8 +216,9 @@ The goal of the screenshots is to support technical claims with direct evidence 
 
 ### Finished So Far
 
-The host-side monitoring and alerting path is complete and validated:
+The lab now has two validated monitoring and alerting paths:
 
+#### Host-side path
 - attack simulation
 - host telemetry generation
 - centralized log ingestion
@@ -166,23 +226,40 @@ The host-side monitoring and alerting path is complete and validated:
 - alarm triggering
 - SNS notification delivery
 
+#### CloudTrail-side path
+- CloudTrail event generation
+- CloudTrail event validation
+- CloudWatch log ingestion
+- detection engineering
+- alarm triggering
+- SNS notification delivery
+
 ### Still Planned
 
-The lab is not finished yet.
+The lab is much stronger now, but it is still not final.
 
-The major remaining area is the **CloudTrail-side detection path**, which will extend monitoring beyond the Linux host and deeper into AWS account activity.
+The next logical improvements include:
 
-Planned next steps include building detections for cloud-side behaviors such as:
+- adding more CloudTrail-side detections beyond `RevokeSecurityGroupIngress`
+- expanding cloud-side coverage to other high-signal AWS administrative events
+- adding more host-side detections beyond invalid-user SSH activity
+- improving cross-source correlation between host and cloud telemetry
+- expanding the reflections and improvements section as the lab matures
 
-- security group modifications
-- failed console logins
-- IAM changes
-- other suspicious control-plane actions
+Strong future candidates include detections for:
 
-The final phase of the lab will also include a reflections and improvements section covering limitations, future enhancements, and design tradeoffs.
+- security group rule additions
+- failed AWS console login activity
+- IAM policy, role, or user changes
+- suspicious administrative API activity
+- trail modification or disablement attempts
 
 ## Key Takeaway
 
-This lab is intended to show that I can build and validate a cloud-native monitoring pipeline in AWS, not just configure services blindly.
+This lab now demonstrates two distinct cloud security monitoring paths in AWS.
 
-So far, it demonstrates that I can move from raw host telemetry to centralized logs, custom detections, alarms, and real notification delivery. The next step is to extend that same approach to CloudTrail-based AWS activity monitoring so the lab covers both host and cloud control-plane visibility.
+On the host side, it shows how Linux authentication telemetry can be collected, centralized, converted into a custom detection metric, and escalated into an alert.
+
+On the cloud side, it shows how AWS control-plane activity captured by CloudTrail can be turned into a custom security metric, evaluated by a CloudWatch alarm, and delivered through SNS.
+
+Together, these two paths show that I can build and validate a cloud-native monitoring workflow in AWS across both workload-level and control-plane visibility.
