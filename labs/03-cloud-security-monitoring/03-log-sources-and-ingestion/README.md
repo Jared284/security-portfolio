@@ -205,6 +205,7 @@ Even with those limitations, this phase provides the core telemetry foundation n
 
 ![CloudTrail log group showing control-plane event records in CloudWatch](../screenshots/cloudtrail-log-group-events.png)
 
+
 ## Key Takeaway
 
 This phase established the telemetry foundation for the lab by centralizing both Linux host authentication logs and AWS control-plane activity into CloudWatch Logs.
