@@ -49,7 +49,7 @@ Completed:
 
 ### CloudTrail-side monitoring path
 
-The CloudTrail-side monitoring path is also now built and validated end to end for one initial control-plane detection.
+The CloudTrail-side monitoring path is now built and validated end to end for two related control-plane detections.
 
 Completed:
 
@@ -60,17 +60,22 @@ Completed:
 - CloudTrail configured to deliver to CloudWatch Logs
 - CloudTrail telemetry validated in both S3 and CloudWatch
 - CloudTrail log group `cloud-security-monitoring-cloudtrail` identified and validated
-- controlled security group rule change generated against the EC2 instance’s attached security group
+- controlled security group rule changes generated against the EC2 instance’s attached security group
 - CloudTrail event `RevokeSecurityGroupIngress` identified in Event history
+- CloudTrail event `AuthorizeSecurityGroupIngress` identified in Event history
 - metric filter `revoke-security-group-ingress` created
+- metric filter `authorize-security-group-ingress` created
 - custom metric `CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents` validated
+- custom metric `CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents` validated
 - CloudWatch alarm `revoke-security-group-ingress-alarm` triggered successfully
-- SNS email alert delivery validated
+- CloudWatch alarm `authorize-security-group-ingress-alarm` triggered successfully
+- SNS email alert delivery validated for both CloudTrail-side detections
 
 ## Completed Documentation
 
 The following sections are now drafted and updated to reflect both the host-side and CloudTrail-side work:
 
+- `03-log-sources-and-ingestion/README.md`
 - `04-attack-simulation/README.md`
 - `05-detection-engineering/README.md`
 - `06-alerting-and-response/README.md`
@@ -82,11 +87,11 @@ The root `README.md` has also been updated to reflect current lab status.
 
 The biggest remaining gap is no longer whether the CloudTrail path works at all. It does.
 
-The bigger remaining challenge is expanding the lab beyond one host-side detection and one CloudTrail-side detection so the project shows broader monitoring depth.
+The bigger remaining challenge is expanding the lab beyond one host-side detection and two closely related CloudTrail-side detections so the project shows broader monitoring depth.
 
 ### Priority next steps
 
-- add more CloudTrail-based detections beyond `RevokeSecurityGroupIngress`
+- add more CloudTrail-based detections beyond security group ingress additions and removals
 - add more host-based detections beyond invalid-user SSH activity
 - improve the consistency and polish of screenshots and diagrams
 - strengthen cross-source explanation of how host and cloud telemetry complement each other
@@ -96,7 +101,6 @@ The bigger remaining challenge is expanding the lab beyond one host-side detecti
 
 CloudTrail-side candidates:
 
-- `AuthorizeSecurityGroupIngress`
 - failed AWS console login activity
 - IAM policy, role, or user changes
 - suspicious administrative API activity
@@ -111,9 +115,9 @@ Host-side candidates:
 
 ## Current Priority
 
-**Current phase:** Both the host-side monitoring path and one CloudTrail-side monitoring path are complete and validated.
+**Current phase:** The host-side monitoring path and two CloudTrail-side monitoring paths are complete and validated.
 
-**Next phase:** Expand the number and quality of detections so the lab demonstrates broader cloud security monitoring depth rather than just two validated signal paths.
+**Next phase:** Expand the number and quality of detections so the lab demonstrates broader cloud security monitoring depth rather than just a small set of validated signal paths.
 
 ## Open Notes
 
@@ -121,6 +125,7 @@ Host-side candidates:
 - This appeared to be an email endpoint or link-handling issue rather than an AWS alarm issue.
 - End-to-end SNS delivery was successfully validated after switching to a different email endpoint.
 - CloudTrail Event history was more reliable than CloudWatch log searching for quickly confirming the exact control-plane event name during detection engineering.
+- Attempting to build failed AWS console login detection provided useful insight into sign-in event structure, but it was not the best next implementation target for this phase compared with paired security group change detections.
 - Screenshot organization may still need cleanup depending on the final repo structure.
 
 ## Final Goal
