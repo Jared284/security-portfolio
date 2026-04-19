@@ -436,7 +436,7 @@ Even with those limitations, this phase provides strong evidence that the lab ca
 
 ### CloudTrail Authorize Custom Metric Validation
 
-![Custom CloudWatch metric showing AuthorizeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-authorize-security-group-ingress-events.png)
+![Custom CloudWatch metric showing AuthorizeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-authorize-security-group-ingress-events.png) 
 
 ## Key Takeaway
 
