@@ -4,19 +4,21 @@
 
 The goal of this phase was to convert raw security telemetry into measurable detection signals that could be monitored and later used for alerting.
 
-For this part of the lab, I focused on two different detection paths:
+For this part of the lab, I focused on three different detection paths:
 
 1. **Host-side detection** for repeated invalid-user SSH login attempts on the EC2 monitoring host
 2. **Cloud-side detection** for AWS security group ingress rule removal events recorded in CloudTrail
+3. **Cloud-side detection** for AWS security group ingress rule addition events recorded in CloudTrail
 
 Together, these detections demonstrate monitoring across both host-level and cloud control-plane telemetry.
 
 ## Detection Scope
 
-This phase now includes two detection types:
+This phase now includes three detection types:
 
 - **Host-based detection:** repeated `Invalid user` SSH authentication activity
 - **CloudTrail-based detection:** `RevokeSecurityGroupIngress` control-plane events
+- **CloudTrail-based detection:** `AuthorizeSecurityGroupIngress` control-plane events
 
 This matters because the lab is designed to show visibility across two different layers:
 
@@ -119,19 +121,19 @@ This metric became the basis for the host-side alarm configured in the next phas
 
 ---
 
-## CloudTrail-Side Detection
+## CloudTrail-Side Detection: RevokeSecurityGroupIngress
 
 ### Detection Goal
 
-The cloud-side detection logic was designed to identify AWS control-plane events where an ingress rule was removed from a security group.
+The first cloud-side detection logic was designed to identify AWS control-plane events where an ingress rule was removed from a security group.
 
-The first implemented CloudTrail detection focused on the event:
+The implemented CloudTrail detection focused on the event:
 
 ```text
 RevokeSecurityGroupIngress
 ```
 
-This was a strong first cloud-side detection because:
+This was a strong cloud-side detection because:
 
 - it is directly tied to AWS network access control
 - it represents an administrative change to security posture
@@ -231,7 +233,7 @@ This proved that:
 - the custom metric was generated correctly
 - the cloud-side detection logic successfully translated AWS administrative activity into a measurable signal
 
-### CloudTrail-Side Detection Output
+### Revoke Detection Output
 
 The final detection output from this path was the custom CloudWatch metric:
 
@@ -239,7 +241,131 @@ The final detection output from this path was the custom CloudWatch metric:
 CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents
 ```
 
-This metric became the basis for the CloudTrail-side alarm configured in the next phase of the lab.
+This metric became the basis for one of the CloudTrail-side alarms configured in the next phase of the lab.
+
+---
+
+## CloudTrail-Side Detection: AuthorizeSecurityGroupIngress
+
+### Detection Goal
+
+The second cloud-side detection logic was designed to identify AWS control-plane events where an ingress rule was added to a security group.
+
+The implemented CloudTrail detection focused on the event:
+
+```text
+AuthorizeSecurityGroupIngress
+```
+
+This was chosen as a paired detection with `RevokeSecurityGroupIngress` because together they provide visibility into when security group exposure is both opened and closed.
+
+This was a strong addition because:
+
+- it tracks a meaningful AWS network access control change
+- it complements the existing revoke detection
+- it improves coverage of security group modification activity
+- it is easy to simulate safely and validate in a lab
+
+### Telemetry Source
+
+The telemetry source for this detection was also AWS CloudTrail.
+
+CloudTrail recorded the event and delivered it into the CloudWatch Logs log group:
+
+```text
+cloud-security-monitoring-cloudtrail
+```
+
+This allowed the same centralized CloudWatch-based detection workflow to be reused for another AWS control-plane signal.
+
+### Event of Interest
+
+To generate the event, I added a controlled temporary inbound rule to the EC2 instance’s attached security group.
+
+The relevant CloudTrail event identified during validation was:
+
+```text
+AuthorizeSecurityGroupIngress
+```
+
+Event source:
+
+```text
+ec2.amazonaws.com
+```
+
+Security group involved:
+
+```text
+sg-03517595a20d4c052
+```
+
+### Metric Filter Design
+
+To detect this behavior in CloudWatch Logs, I created a metric filter on the `cloud-security-monitoring-cloudtrail` log group.
+
+#### Metric Filter Configuration
+
+- **Filter name:** `authorize-security-group-ingress`
+- **Filter pattern:** `{ ($.eventSource = "ec2.amazonaws.com") && ($.eventName = "AuthorizeSecurityGroupIngress") }`
+- **Metric namespace:** `CloudSecurityMonitoring`
+- **Metric name:** `AuthorizeSecurityGroupIngressEvents`
+- **Metric value:** `1`
+
+This configuration caused every matching CloudTrail `AuthorizeSecurityGroupIngress` event to increment a custom CloudWatch metric by `1`.
+
+### Why This Detection Logic Was Chosen
+
+This detection was intentionally added after the revoke detection to make the cloud-side monitoring coverage more complete.
+
+Rather than only detecting when ingress rules are removed, the lab now also detects when ingress rules are added. That is important because ingress additions may represent new exposure being opened on a resource.
+
+This made the detection valuable because it shows monitoring for both sides of a security group change lifecycle:
+
+- ingress rule additions
+- ingress rule removals
+
+That gives the cloud-side detection path more depth and makes the monitoring story stronger.
+
+### CloudTrail-Side Validation
+
+After generating the security group rule addition event, I validated the cloud-side detection logic across two layers.
+
+#### 1. CloudTrail Event Validation
+
+I confirmed in CloudTrail Event history that the security group rule addition generated:
+
+```text
+AuthorizeSecurityGroupIngress
+```
+
+This proved that:
+
+- the AWS administrative action was recorded by CloudTrail
+- the action came from the correct service source: `ec2.amazonaws.com`
+- the target security group was correctly identified in the event data
+
+#### 2. CloudWatch Metric Validation
+
+I then verified that the metric filter converted the CloudTrail event into the custom metric `AuthorizeSecurityGroupIngressEvents`.
+
+When viewed using the `Sum` statistic, the metric showed a datapoint of `1`, confirming that the `AuthorizeSecurityGroupIngress` event was successfully counted.
+
+This proved that:
+
+- the metric filter matched the intended CloudTrail event
+- the custom metric was generated correctly
+- the cloud-side detection logic successfully translated AWS administrative activity into a measurable signal
+
+### Authorize Detection Output
+
+The final detection output from this path was the custom CloudWatch metric:
+
+```text
+CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents
+```
+
+This metric became the basis for an additional CloudTrail-side alarm configured in the next phase of the lab.
 
 ---
 
@@ -247,15 +373,21 @@ This metric became the basis for the CloudTrail-side alarm configured in the nex
 
 The strongest part of this phase is that it does not rely on just one source of telemetry.
 
-Instead, it demonstrates two detection pipelines:
+Instead, it demonstrates detection pipelines built from:
 
-- one built from Linux host authentication logs
-- one built from AWS CloudTrail control-plane events
+- Linux host authentication logs
+- AWS CloudTrail control-plane events
+
+It also now includes paired cloud-side detections for:
+
+- ingress rule additions
+- ingress rule removals
 
 That combination is important because it shows broader monitoring coverage across both:
 
 - workload-level activity
 - cloud administrative activity
+- changes to network exposure in AWS
 
 This makes the lab stronger than a basic single-source logging project.
 
@@ -263,12 +395,12 @@ This makes the lab stronger than a basic single-source logging project.
 
 These detections still have several limitations:
 
-- both detections rely on relatively simple matching logic
+- all detections rely on relatively simple matching logic
 - the host-side rule uses string matching rather than deeper parsing
-- the CloudTrail-side rule is focused on a single event type
-- neither detection currently correlates with other telemetry sources
+- the CloudTrail-side rules are focused on specific event types rather than broader correlation
+- the lab does not yet correlate host-level and cloud-level telemetry together
 - the lab does not yet perform automated response based on these detections
-- the cloud-side coverage is still limited to one initial administrative event type
+- cloud-side coverage is still limited to a small set of control-plane events
 
 Even with those limitations, this phase provides strong evidence that the lab can turn both host activity and AWS control-plane activity into usable cloud-native security signals.
 
@@ -286,24 +418,32 @@ Even with those limitations, this phase provides strong evidence that the lab ca
 
 ![Custom CloudWatch metric showing summed invalid-user SSH attempts](../screenshots/cloudwatch-metric-invalid-user-ssh-attempts-sum-view.png)
 
-### CloudTrail Security Group Change Event
+### CloudTrail Revoke Security Group Change Event
 
 ![CloudTrail event showing RevokeSecurityGroupIngress for the monitored security group](../screenshots/cloudtrail-security-group-change-event.png)
 
-### CloudTrail-Side Metric Filter Configuration
+### CloudTrail Revoke Metric Filter Configuration
 
 ![Metric filter configuration for RevokeSecurityGroupIngress detection](../screenshots/metric-filter-revoke-security-group-ingress.png)
 
-### CloudTrail-Side Custom Metric Validation
+### CloudTrail Revoke Custom Metric Validation
 
 ![Custom CloudWatch metric showing RevokeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-revoke-security-group-ingress-events.png)
 
+### CloudTrail Authorize Security Group Change Event
+
+![CloudTrail event showing AuthorizeSecurityGroupIngress for the monitored security group](../screenshots/cloudtrail-authorize-security-group-ingress-event.png)
+
+### CloudTrail Authorize Custom Metric Validation
+
+![Custom CloudWatch metric showing AuthorizeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-authorize-security-group-ingress-events.png)
+
 ## Key Takeaway
 
-This phase turned two different forms of raw telemetry into usable cloud-native detection signals.
+This phase turned multiple forms of raw telemetry into usable cloud-native detection signals.
 
 On the host side, repeated invalid-user SSH activity was collected, matched, and converted into the `InvalidUserSSHAttempts` metric.
 
-On the cloud side, a real AWS security group ingress rule removal event was recorded in CloudTrail, matched in CloudWatch Logs, and converted into the `RevokeSecurityGroupIngressEvents` metric.
+On the cloud side, AWS security group ingress rule removal and addition events were recorded in CloudTrail, matched in CloudWatch Logs, and converted into the `RevokeSecurityGroupIngressEvents` and `AuthorizeSecurityGroupIngressEvents` metrics.
 
 Together, these detection paths show that the lab can monitor and translate both host-level and cloud control-plane events into actionable security signals that are ready for alerting.
