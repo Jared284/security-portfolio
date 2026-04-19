@@ -64,7 +64,7 @@ CloudTrail is configured to send logs to:
 - **S3** for storage
 - **CloudWatch Logs** for monitoring
 
-This telemetry is used to detect security-relevant AWS administrative activity, including security group ingress rule removal events.
+This telemetry is used to detect security-relevant AWS administrative activity, including security group ingress rule addition and removal events.
 
 ## Lab Architecture
 
@@ -114,6 +114,8 @@ The following components have been built:
 - CloudWatch alarm for repeated invalid-user SSH activity
 - custom metric filter for `RevokeSecurityGroupIngress` CloudTrail events
 - CloudWatch alarm for security group ingress rule removal activity
+- custom metric filter for `AuthorizeSecurityGroupIngress` CloudTrail events
+- CloudWatch alarm for security group ingress rule addition activity
 - SNS-based email notification path
 
 ### Completed Validation Work
@@ -135,12 +137,12 @@ The host-based monitoring path was validated by:
 
 The CloudTrail-based monitoring path was validated by:
 
-- making a controlled security group rule change on the EC2 instance’s attached security group
-- identifying the resulting CloudTrail event `RevokeSecurityGroupIngress`
-- confirming the event in CloudTrail Event history
-- confirming the event was matched by the CloudWatch metric filter
-- confirming the custom metric `RevokeSecurityGroupIngressEvents`
-- confirming the CloudWatch alarm entered the `ALARM` state
+- making controlled security group rule changes on the EC2 instance’s attached security group
+- identifying the resulting CloudTrail events `AuthorizeSecurityGroupIngress` and `RevokeSecurityGroupIngress`
+- confirming those events in CloudTrail Event history
+- confirming the events were matched by CloudWatch metric filters
+- confirming the custom metrics `AuthorizeSecurityGroupIngressEvents` and `RevokeSecurityGroupIngressEvents`
+- confirming the CloudWatch alarms entered the `ALARM` state
 - confirming SNS email alert delivery
 
 ## Detection Implemented So Far
@@ -158,7 +160,7 @@ This detection uses:
 
 This metric is used to trigger a CloudWatch alarm when repeated invalid-user SSH activity exceeds the configured threshold.
 
-### 2. CloudTrail-Based Detection
+### 2. CloudTrail-Based Detection: RevokeSecurityGroupIngress
 
 The second implemented detection focuses on AWS security group ingress rule removal activity.
 
@@ -173,9 +175,24 @@ This detection uses:
 
 This metric is used to trigger a CloudWatch alarm when a matching security group ingress rule removal event is detected.
 
+### 3. CloudTrail-Based Detection: AuthorizeSecurityGroupIngress
+
+The third implemented detection focuses on AWS security group ingress rule addition activity.
+
+This detection uses:
+
+- **Telemetry source:** CloudTrail
+- **CloudWatch Logs log group:** `cloud-security-monitoring-cloudtrail`
+- **Event source:** `ec2.amazonaws.com`
+- **Event name:** `AuthorizeSecurityGroupIngress`
+- **Metric namespace:** `CloudSecurityMonitoring`
+- **Metric name:** `AuthorizeSecurityGroupIngressEvents`
+
+This metric is used to trigger a CloudWatch alarm when a matching security group ingress rule addition event is detected.
+
 ## Alerting Implemented So Far
 
-The lab currently includes two CloudWatch alarms:
+The lab currently includes three CloudWatch alarms:
 
 ### Host-Side Alarm
 
@@ -183,13 +200,19 @@ The lab currently includes two CloudWatch alarms:
 - **Signal:** repeated invalid-user SSH attempts
 - **Threshold:** greater than `3` within `5` minutes
 
-### CloudTrail-Side Alarm
+### CloudTrail-Side Revoke Alarm
 
 - **Alarm name:** `revoke-security-group-ingress-alarm`
 - **Signal:** `RevokeSecurityGroupIngress` CloudTrail events
 - **Threshold:** greater than or equal to `1` within `5` minutes
 
-Both alarms publish notifications to the SNS topic:
+### CloudTrail-Side Authorize Alarm
+
+- **Alarm name:** `authorize-security-group-ingress-alarm`
+- **Signal:** `AuthorizeSecurityGroupIngress` CloudTrail events
+- **Threshold:** greater than or equal to `1` within `5` minutes
+
+All three alarms publish notifications to the SNS topic:
 
 ```text
 cloud-security-monitoring-alerts
@@ -216,7 +239,7 @@ The goal of the screenshots is to support technical claims with direct evidence 
 
 ### Finished So Far
 
-The lab now has two validated monitoring and alerting paths:
+The lab now has three validated monitoring and alerting paths:
 
 #### Host-side path
 - attack simulation
@@ -226,7 +249,15 @@ The lab now has two validated monitoring and alerting paths:
 - alarm triggering
 - SNS notification delivery
 
-#### CloudTrail-side path
+#### CloudTrail-side path: ingress rule removal
+- CloudTrail event generation
+- CloudTrail event validation
+- CloudWatch log ingestion
+- detection engineering
+- alarm triggering
+- SNS notification delivery
+
+#### CloudTrail-side path: ingress rule addition
 - CloudTrail event generation
 - CloudTrail event validation
 - CloudWatch log ingestion
@@ -240,7 +271,7 @@ The lab is much stronger now, but it is still not final.
 
 The next logical improvements include:
 
-- adding more CloudTrail-side detections beyond `RevokeSecurityGroupIngress`
+- adding more CloudTrail-side detections beyond security group ingress additions and removals
 - expanding cloud-side coverage to other high-signal AWS administrative events
 - adding more host-side detections beyond invalid-user SSH activity
 - improving cross-source correlation between host and cloud telemetry
@@ -248,7 +279,6 @@ The next logical improvements include:
 
 Strong future candidates include detections for:
 
-- security group rule additions
 - failed AWS console login activity
 - IAM policy, role, or user changes
 - suspicious administrative API activity
@@ -256,10 +286,10 @@ Strong future candidates include detections for:
 
 ## Key Takeaway
 
-This lab now demonstrates two distinct cloud security monitoring paths in AWS.
+This lab now demonstrates multiple cloud security monitoring paths in AWS.
 
 On the host side, it shows how Linux authentication telemetry can be collected, centralized, converted into a custom detection metric, and escalated into an alert.
 
-On the cloud side, it shows how AWS control-plane activity captured by CloudTrail can be turned into a custom security metric, evaluated by a CloudWatch alarm, and delivered through SNS.
+On the cloud side, it shows how AWS control-plane activity captured by CloudTrail can be turned into custom security metrics for both security group ingress rule additions and removals, evaluated by CloudWatch alarms, and delivered through SNS.
 
-Together, these two paths show that I can build and validate a cloud-native monitoring workflow in AWS across both workload-level and control-plane visibility.
+Together, these paths show that I can build and validate a cloud-native monitoring workflow in AWS across both workload-level and control-plane visibility.
