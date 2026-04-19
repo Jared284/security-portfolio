@@ -4,19 +4,21 @@
 
 The goal of this phase was to turn the custom detection metrics built earlier in the lab into actionable alerts and validate end-to-end notification delivery.
 
-At this stage, the lab includes two alerting paths:
+At this stage, the lab includes three alerting paths:
 
 1. **Host-side alerting** for repeated invalid-user SSH attempts
 2. **CloudTrail-side alerting** for security group ingress rule removal events
+3. **CloudTrail-side alerting** for security group ingress rule addition events
 
 Together, these alerting paths show that both host activity and AWS control-plane activity can move from detection to real notification delivery.
 
 ## Alerting Scope
 
-This phase now includes alerting for two different security signals:
+This phase now includes alerting for three different security signals:
 
 - **Host-based signal:** `InvalidUserSSHAttempts`
 - **CloudTrail-based signal:** `RevokeSecurityGroupIngressEvents`
+- **CloudTrail-based signal:** `AuthorizeSecurityGroupIngressEvents`
 
 This matters because the lab is intended to show not just detection, but the ability to turn those detections into meaningful alerts.
 
@@ -97,11 +99,11 @@ In a real environment, this alert would justify follow-up investigation such as:
 
 ---
 
-## CloudTrail-Side Alerting
+## CloudTrail-Side Alerting: RevokeSecurityGroupIngress
 
 ### Alerting Logic
 
-The cloud-side alert was based on the custom CloudWatch metric:
+The first cloud-side alert was based on the custom CloudWatch metric:
 
 ```text
 CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents
@@ -174,7 +176,7 @@ I confirmed successful delivery by receiving the email notification containing:
 
 This proved that the cloud-side monitoring pipeline also extended beyond detection and into real alert delivery.
 
-### Operational Meaning of the CloudTrail-Side Alert
+### Operational Meaning of the Revoke Alert
 
 This alert indicates that an ingress rule was removed from an AWS security group.
 
@@ -195,6 +197,107 @@ In a real environment, this alert would justify follow-up investigation such as:
 
 ---
 
+## CloudTrail-Side Alerting: AuthorizeSecurityGroupIngress
+
+### Alerting Logic
+
+The second cloud-side alert was based on the custom CloudWatch metric:
+
+```text
+CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents
+```
+
+This metric counted CloudTrail events where an ingress rule was added to a security group.
+
+The underlying event of interest was:
+
+```text
+AuthorizeSecurityGroupIngress
+```
+
+### Alarm Configuration
+
+I created a CloudWatch alarm with the following logic:
+
+- **Alarm name:** `authorize-security-group-ingress-alarm`
+- **Metric:** `AuthorizeSecurityGroupIngressEvents`
+- **Namespace:** `CloudSecurityMonitoring`
+- **Threshold:** greater than or equal to `1`
+- **Evaluation window:** `1` datapoint within `5` minutes
+- **Alarm action:** publish notification to SNS topic `cloud-security-monitoring-alerts`
+
+In practice, this meant that a single detected `AuthorizeSecurityGroupIngress` event within the evaluation period was enough to transition the alarm into the `ALARM` state.
+
+### Why This Alert Matters
+
+This alert complements the revoke alert by providing visibility into when security group exposure is opened, not just when it is removed.
+
+That matters because an ingress rule addition may represent:
+
+- legitimate administrative work
+- intentional exposure of a service
+- accidental overexposure
+- risky or unauthorized network-access changes
+
+Together, the authorize and revoke alerts provide more complete monitoring coverage of security group change activity.
+
+### CloudTrail-Side Validation
+
+I validated the authorize alerting path by generating a real AWS administrative action against the EC2 instance’s attached security group.
+
+#### 1. Alarm Trigger Validation
+
+I added a temporary inbound security group rule to generate a fresh `AuthorizeSecurityGroupIngress` CloudTrail event.
+
+That event was:
+
+- recorded in CloudTrail
+- matched by the CloudWatch Logs metric filter
+- converted into the custom metric `AuthorizeSecurityGroupIngressEvents`
+
+After the new datapoint was registered, CloudWatch transitioned the `authorize-security-group-ingress-alarm` alarm into the `ALARM` state.
+
+This validated that:
+
+- the CloudTrail-side metric threshold logic was working
+- the alarm was tied to the correct custom metric
+- the alarm condition was evaluated successfully within the configured time window
+
+#### 2. Notification Delivery Validation
+
+Once the alarm entered the `ALARM` state, CloudWatch published the alert to the SNS topic.
+
+I confirmed successful delivery by receiving the email notification containing:
+
+- the alarm name
+- the `ALARM` state transition
+- the threshold-crossed message
+- the timestamp of the event
+- the CloudWatch alarm reference link
+
+This proved that the authorize detection path also extended beyond detection and into real alert delivery.
+
+### Operational Meaning of the Authorize Alert
+
+This alert indicates that an ingress rule was added to an AWS security group.
+
+From an analyst perspective, that behavior could represent:
+
+- legitimate administrative maintenance
+- intentional service exposure
+- accidental misconfiguration
+- risky or unauthorized expansion of network exposure
+
+In a real environment, this alert would justify follow-up investigation such as:
+
+- confirming who made the change
+- reviewing the port, protocol, and source range that were added
+- determining whether the change was expected or approved
+- checking what resource the security group is attached to
+- evaluating whether the new rule introduced unnecessary exposure
+
+---
+
 ## SNS Notification Path
 
 To support alert delivery, I configured an Amazon SNS topic for notifications:
@@ -205,10 +308,11 @@ cloud-security-monitoring-alerts
 
 A confirmed email subscription was attached to this topic so that CloudWatch alarm state changes could be delivered to an email endpoint.
 
-This SNS topic was used for both:
+This SNS topic was used for:
 
 - the host-side invalid-user SSH alarm
 - the CloudTrail-side security group ingress removal alarm
+- the CloudTrail-side security group ingress addition alarm
 
 ## Troubleshooting During Validation
 
@@ -236,7 +340,7 @@ This alerting workflow still has several limitations:
 - alerting is email-based only
 - there is no automated containment or remediation action
 - the host-side alarm is based on one SSH-related behavior
-- the cloud-side alarm is based on one initial CloudTrail event type
+- the cloud-side alarms are based on a small set of specific CloudTrail event types
 - the workflow does not yet correlate host-side and cloud-side events together
 - thresholds and alerting logic are intentionally simple for the initial lab implementation
 
@@ -252,20 +356,28 @@ Even with those limitations, this phase provides strong proof that the lab can m
 
 ![Email notification showing successful delivery of the invalid-user SSH alarm](../screenshots/sns-email-invalid-user-alarm-icloud.png.jpeg)
 
-### CloudTrail-Side CloudWatch Alarm Trigger
+### CloudTrail Revoke CloudWatch Alarm Trigger
 
 ![CloudWatch alarm entering the ALARM state after a RevokeSecurityGroupIngress event was detected](../screenshots/cloudwatch-alarm-revoke-security-group-ingress-triggered.png)
 
-### CloudTrail-Side SNS Email Alert Delivery
+### CloudTrail Revoke SNS Email Alert Delivery
 
 ![Email notification showing successful delivery of the RevokeSecurityGroupIngress alarm](../screenshots/sns-email-revoke-security-group-ingress-alarm.png)
 
+### CloudTrail Authorize CloudWatch Alarm Trigger
+
+![CloudWatch alarm entering the ALARM state after an AuthorizeSecurityGroupIngress event was detected](../screenshots/cloudwatch-alarm-authorize-security-group-ingress-triggered.png)
+
+### CloudTrail Authorize SNS Email Alert Delivery
+
+![Email notification showing successful delivery of the AuthorizeSecurityGroupIngress alarm](../screenshots/sns-email-authorize-security-group-ingress-alarm.png)
+
 ## Key Takeaway
 
-This phase completed two end-to-end alerting paths in the lab.
+This phase completed three end-to-end alerting paths in the lab.
 
 On the host side, repeated invalid-user SSH attempts were converted into the `InvalidUserSSHAttempts` metric, evaluated by a CloudWatch alarm, and delivered through SNS.
 
-On the cloud side, a real AWS control-plane change event (`RevokeSecurityGroupIngress`) was converted into the `RevokeSecurityGroupIngressEvents` metric, evaluated by a second CloudWatch alarm, and also delivered through SNS.
+On the cloud side, AWS security group ingress rule removal and addition events were converted into the `RevokeSecurityGroupIngressEvents` and `AuthorizeSecurityGroupIngressEvents` metrics, evaluated by CloudWatch alarms, and delivered through SNS.
 
 Together, these alerting paths show that the lab can move from both host telemetry and AWS administrative activity to centralized detection, alarm state changes, and actionable notification delivery.
