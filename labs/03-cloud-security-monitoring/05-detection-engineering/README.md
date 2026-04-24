@@ -4,30 +4,36 @@
 
 The goal of this phase was to convert raw security telemetry into measurable detection signals that could be monitored and later used for alerting.
 
-For this part of the lab, I focused on three different detection paths:
+For this part of the lab, I focused on four detection paths:
 
 1. **Host-side detection** for repeated invalid-user SSH login attempts on the EC2 monitoring host
-2. **Cloud-side detection** for AWS security group ingress rule removal events recorded in CloudTrail
-3. **Cloud-side detection** for AWS security group ingress rule addition events recorded in CloudTrail
+2. **CloudTrail-side detection** for AWS security group ingress rule removal events
+3. **CloudTrail-side detection** for AWS security group ingress rule addition events
+4. **CloudTrail-side detection** for IAM managed policy attachment events
 
-Together, these detections demonstrate monitoring across both host-level and cloud control-plane telemetry.
+Together, these detections demonstrate monitoring across host-level telemetry, network-control-plane telemetry, and identity-control-plane telemetry.
+
+---
 
 ## Detection Scope
 
-This phase now includes three detection types:
+This phase includes four detection types:
 
 - **Host-based detection:** repeated `Invalid user` SSH authentication activity
 - **CloudTrail-based detection:** `RevokeSecurityGroupIngress` control-plane events
 - **CloudTrail-based detection:** `AuthorizeSecurityGroupIngress` control-plane events
+- **CloudTrail-based detection:** `AttachUserPolicy` control-plane events
 
-This matters because the lab is designed to show visibility across two different layers:
+This matters because the lab is designed to show visibility across multiple security layers:
 
 - Linux host activity on the EC2 instance
 - AWS administrative activity in the account itself
+- network exposure changes through security group events
+- IAM permission changes through identity events
 
 ---
 
-## Host-Side Detection
+## Host-Side Detection: Invalid SSH User Attempts
 
 ### Detection Goal
 
@@ -83,7 +89,7 @@ To detect this behavior in CloudWatch Logs, I created a metric filter on the `cl
 
 This configuration caused every matching `Invalid user` log entry to increment a custom CloudWatch metric by `1`.
 
-### Host-Side Validation
+### Validation
 
 After generating repeated fake SSH login attempts, I validated the host-side detection logic across two layers.
 
@@ -109,7 +115,7 @@ This proved that:
 - the custom metric was generated correctly
 - the detection logic successfully translated raw log text into a measurable signal
 
-### Host-Side Detection Output
+### Detection Output
 
 The final detection output from this path was the custom CloudWatch metric:
 
@@ -125,7 +131,7 @@ This metric became the basis for the host-side alarm configured in the next phas
 
 ### Detection Goal
 
-The first cloud-side detection logic was designed to identify AWS control-plane events where an ingress rule was removed from a security group.
+This detection logic was designed to identify AWS control-plane events where an ingress rule was removed from a security group.
 
 The implemented CloudTrail detection focused on the event:
 
@@ -190,7 +196,7 @@ This configuration caused every matching CloudTrail `RevokeSecurityGroupIngress`
 
 ### Why This Detection Logic Was Chosen
 
-This was intentionally chosen as the first CloudTrail-side detection because it clearly demonstrates how AWS administrative events can be converted into cloud-native detection signals.
+This was intentionally chosen as a CloudTrail-side detection because it clearly demonstrates how AWS administrative events can be converted into cloud-native detection signals.
 
 The workflow is straightforward and high-signal:
 
@@ -199,11 +205,11 @@ The workflow is straightforward and high-signal:
 3. route the event into CloudWatch Logs
 4. match the event with a metric filter
 5. convert the event into a custom metric
-6. later use that metric for alerting
+6. use that metric for alerting
 
-This made it a strong first control-plane detection to complement the host-based SSH detection.
+This made it a strong control-plane detection to complement the host-based SSH detection.
 
-### CloudTrail-Side Validation
+### Validation
 
 After generating the security group rule removal event, I validated the cloud-side detection logic across two layers.
 
@@ -233,7 +239,7 @@ This proved that:
 - the custom metric was generated correctly
 - the cloud-side detection logic successfully translated AWS administrative activity into a measurable signal
 
-### Revoke Detection Output
+### Detection Output
 
 The final detection output from this path was the custom CloudWatch metric:
 
@@ -249,7 +255,7 @@ This metric became the basis for one of the CloudTrail-side alarms configured in
 
 ### Detection Goal
 
-The second cloud-side detection logic was designed to identify AWS control-plane events where an ingress rule was added to a security group.
+This detection logic was designed to identify AWS control-plane events where an ingress rule was added to a security group.
 
 The implemented CloudTrail detection focused on the event:
 
@@ -262,13 +268,13 @@ This was chosen as a paired detection with `RevokeSecurityGroupIngress` because 
 This was a strong addition because:
 
 - it tracks a meaningful AWS network access control change
-- it complements the existing revoke detection
+- it complements the revoke detection
 - it improves coverage of security group modification activity
 - it is easy to simulate safely and validate in a lab
 
 ### Telemetry Source
 
-The telemetry source for this detection was also AWS CloudTrail.
+The telemetry source for this detection was AWS CloudTrail.
 
 CloudTrail recorded the event and delivered it into the CloudWatch Logs log group:
 
@@ -327,7 +333,7 @@ This made the detection valuable because it shows monitoring for both sides of a
 
 That gives the cloud-side detection path more depth and makes the monitoring story stronger.
 
-### CloudTrail-Side Validation
+### Validation
 
 After generating the security group rule addition event, I validated the cloud-side detection logic across two layers.
 
@@ -357,7 +363,7 @@ This proved that:
 - the custom metric was generated correctly
 - the cloud-side detection logic successfully translated AWS administrative activity into a measurable signal
 
-### Authorize Detection Output
+### Detection Output
 
 The final detection output from this path was the custom CloudWatch metric:
 
@@ -369,6 +375,125 @@ This metric became the basis for an additional CloudTrail-side alarm configured 
 
 ---
 
+## CloudTrail-Side Detection: AttachUserPolicy
+
+### Detection Goal
+
+This detection logic was designed to identify AWS control-plane events where an IAM managed policy was attached directly to a user.
+
+The implemented CloudTrail detection focused on the event:
+
+```text
+AttachUserPolicy
+```
+
+This was a high-signal IAM detection because attaching a managed policy can expand a user's permissions. In a real environment, unexpected IAM policy attachment activity may indicate privilege escalation, unauthorized access modification, or post-compromise access expansion.
+
+### Telemetry Source
+
+The telemetry source for this detection was AWS CloudTrail.
+
+CloudTrail recorded the event and delivered it into the CloudWatch Logs log group:
+
+```text
+cloud-security-monitoring-cloudtrail
+```
+
+This allowed IAM activity to be monitored using the same CloudWatch-based detection workflow used for the security group detections.
+
+### Event of Interest
+
+To generate the event, I attached the AWS managed `IAMReadOnlyAccess` policy directly to a test IAM user.
+
+The test user was:
+
+```text
+attach-policy-test-user
+```
+
+The relevant CloudTrail event identified during validation was:
+
+```text
+AttachUserPolicy
+```
+
+Event source:
+
+```text
+iam.amazonaws.com
+```
+
+### Metric Filter Design
+
+To detect this behavior in CloudWatch Logs, I created a metric filter on the `cloud-security-monitoring-cloudtrail` log group.
+
+#### Metric Filter Configuration
+
+- **Filter name:** `attach-user-policy`
+- **Filter pattern:** `{ ($.eventSource = "iam.amazonaws.com") && ($.eventName = "AttachUserPolicy") }`
+- **Metric namespace:** `CloudSecurityMonitoring`
+- **Metric name:** `AttachUserPolicyEvents`
+- **Metric value:** `1`
+
+This configuration caused every matching CloudTrail `AttachUserPolicy` event to increment a custom CloudWatch metric by `1`.
+
+### Why This Detection Logic Was Chosen
+
+This detection was added to expand the lab beyond host telemetry and security group changes.
+
+Security group events show network-control-plane visibility. IAM events show identity-control-plane visibility. That matters because IAM is one of the most important areas of AWS security.
+
+This detection is valuable because it monitors activity that could represent:
+
+- direct permission expansion
+- unauthorized policy attachment
+- privilege escalation
+- attacker persistence or access expansion after compromise
+
+Even though the validation used a low-risk read-only policy, the same detection logic would also catch higher-impact managed policies such as `AdministratorAccess` or `PowerUserAccess`.
+
+### Validation
+
+After attaching the managed policy to the test user, I validated the IAM detection logic across two layers.
+
+#### 1. CloudTrail Event Validation
+
+I confirmed in CloudTrail Event history that the IAM policy attachment generated:
+
+```text
+AttachUserPolicy
+```
+
+This proved that:
+
+- the IAM administrative action was recorded by CloudTrail
+- the action came from the correct service source: `iam.amazonaws.com`
+- the event included the expected IAM user and policy attachment activity
+
+#### 2. CloudWatch Metric Validation
+
+I then verified that the metric filter converted the CloudTrail event into the custom metric `AttachUserPolicyEvents`.
+
+When viewed using the `Sum` statistic, the metric showed a datapoint of `1`, confirming that the `AttachUserPolicy` event was successfully counted.
+
+This proved that:
+
+- the metric filter matched the intended CloudTrail event
+- the custom metric was generated correctly
+- the IAM detection logic successfully translated AWS identity activity into a measurable signal
+
+### Detection Output
+
+The final detection output from this path was the custom CloudWatch metric:
+
+```text
+CloudSecurityMonitoring / AttachUserPolicyEvents
+```
+
+This metric became the basis for an IAM-focused CloudTrail alarm configured in the next phase of the lab.
+
+---
+
 ## Why These Detection Paths Matter Together
 
 The strongest part of this phase is that it does not rely on just one source of telemetry.
@@ -376,20 +501,26 @@ The strongest part of this phase is that it does not rely on just one source of 
 Instead, it demonstrates detection pipelines built from:
 
 - Linux host authentication logs
-- AWS CloudTrail control-plane events
+- AWS CloudTrail network-control-plane events
+- AWS CloudTrail identity-control-plane events
 
-It also now includes paired cloud-side detections for:
+The final detection set includes:
 
-- ingress rule additions
-- ingress rule removals
+- repeated invalid-user SSH activity
+- security group ingress rule additions
+- security group ingress rule removals
+- IAM managed policy attachment activity
 
-That combination is important because it shows broader monitoring coverage across both:
+That combination is important because it shows broader monitoring coverage across:
 
 - workload-level activity
 - cloud administrative activity
-- changes to network exposure in AWS
+- network exposure changes in AWS
+- IAM permission changes in AWS
 
 This makes the lab stronger than a basic single-source logging project.
+
+---
 
 ## Limitations
 
@@ -400,9 +531,12 @@ These detections still have several limitations:
 - the CloudTrail-side rules are focused on specific event types rather than broader correlation
 - the lab does not yet correlate host-level and cloud-level telemetry together
 - the lab does not yet perform automated response based on these detections
-- cloud-side coverage is still limited to a small set of control-plane events
+- cloud-side coverage is limited to a small set of control-plane events
+- IAM monitoring is limited to one event type in this version of the lab
 
 Even with those limitations, this phase provides strong evidence that the lab can turn both host activity and AWS control-plane activity into usable cloud-native security signals.
+
+---
 
 ## Evidence
 
@@ -436,7 +570,25 @@ Even with those limitations, this phase provides strong evidence that the lab ca
 
 ### CloudTrail Authorize Custom Metric Validation
 
-![Custom CloudWatch metric showing AuthorizeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-authorize-security-group-ingress-events.png) 
+![Custom CloudWatch metric showing AuthorizeSecurityGroupIngress event detection](../screenshots/cloudwatch-metric-authorize-security-group-ingress-events.png)
+
+### IAM Policy Attachment Action
+
+![IAM managed policy attached directly to test user](../screenshots/iam-user-policy-attachment-action.png)
+
+### CloudTrail AttachUserPolicy Event
+
+![CloudTrail event showing AttachUserPolicy activity](../screenshots/cloudtrail-attach-user-policy-event.png)
+
+### IAM Metric Filter Configuration
+
+![Metric filter configuration for AttachUserPolicy detection](../screenshots/metric-filter-attach-user-policy.png)
+
+### IAM Custom Metric Validation
+
+![Custom CloudWatch metric showing AttachUserPolicy event detection](../screenshots/metric-attach-user-policy-datapoint.png)
+
+---
 
 ## Key Takeaway
 
@@ -446,4 +598,6 @@ On the host side, repeated invalid-user SSH activity was collected, matched, and
 
 On the cloud side, AWS security group ingress rule removal and addition events were recorded in CloudTrail, matched in CloudWatch Logs, and converted into the `RevokeSecurityGroupIngressEvents` and `AuthorizeSecurityGroupIngressEvents` metrics.
 
-Together, these detection paths show that the lab can monitor and translate both host-level and cloud control-plane events into actionable security signals that are ready for alerting.
+On the identity side, IAM managed policy attachment activity was recorded in CloudTrail, matched in CloudWatch Logs, and converted into the `AttachUserPolicyEvents` metric.
+
+Together, these detection paths show that the lab can monitor and translate host-level, network-control-plane, and identity-control-plane events into actionable security signals that are ready for alerting.
