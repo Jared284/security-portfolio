@@ -6,88 +6,151 @@ This section defines the architecture for the cloud security monitoring lab.
 
 The goal of this architecture is to centralize security-relevant telemetry from both the operating system and the AWS account, apply detection logic to that telemetry, and generate alerts when suspicious activity occurs.
 
-This lab is designed to demonstrate a small but realistic AWS-native monitoring workflow rather than a single host-based detection mechanism.
+This lab demonstrates a small but realistic AWS-native monitoring workflow across host-level logs and AWS control-plane activity.
 
 ---
 
 ## Architecture Goals
 
-The architecture must support the following:
+The architecture supports the following:
 
-- collection of host-level logs from an EC2 instance
+- collection of host-level authentication logs from an EC2 instance
 - collection of AWS control-plane logs through CloudTrail
-- centralized visibility into multiple log sources
+- centralized visibility into multiple telemetry sources
 - detection of suspicious behavior using AWS-native services
 - alerting when defined detection thresholds are met
-- storage of log data for later review
+- storage of CloudTrail log data for later review
+- validation of the full path from event generation to notification delivery
 
 ---
 
 ## Core Components
 
 ### 1. EC2 Instance
-A Linux EC2 instance will act as the monitored host.
 
-This instance will be used to generate host-level telemetry, including authentication activity such as failed SSH login attempts. It represents the operating-system side of the environment.
+A Linux EC2 instance acts as the monitored host.
 
-### 2. CloudWatch Logs
-CloudWatch Logs will be used to centralize host-level log data collected from the EC2 instance.
+This instance generates host-level telemetry, including SSH authentication activity. In this lab, the EC2 instance is used to validate detection of repeated invalid-user SSH login attempts.
 
-This will allow log data to be queried, filtered, and used for detection logic.
+### 2. CloudWatch Agent
 
-### 3. CloudTrail
-CloudTrail will record AWS account activity and management events.
+The CloudWatch Agent runs on the EC2 instance and forwards Linux authentication logs into CloudWatch Logs.
 
-This provides visibility into control-plane actions such as console activity and API calls that would not appear in the operating-system logs of the EC2 instance.
+The monitored host log file is:
 
-### 4. Amazon S3
-S3 will be used for log storage.
+```text
+/var/log/auth.log
+```
 
-CloudTrail logs will be delivered to S3, providing retained records of AWS activity for later review and validation.
+This allows host-level authentication telemetry to be centralized and used for detection.
 
-### 5. Detection Layer
-Detection logic will be built using CloudWatch metric filters and alarms.
+### 3. CloudWatch Logs
 
-This layer will identify suspicious patterns in the ingested logs, such as repeated failed authentication attempts or specific CloudTrail events of interest.
+CloudWatch Logs centralizes both host-level logs and CloudTrail-delivered AWS activity logs.
 
-### 6. Alerting Layer
-Amazon SNS will be used to generate notifications when detection thresholds are met.
+This lab uses two primary log groups:
 
-This represents the alerting stage of the monitoring workflow.
+```text
+cloud-security-monitoring-auth
+cloud-security-monitoring-cloudtrail
+```
+
+The first log group stores Linux authentication logs from the EC2 instance. The second stores AWS control-plane events delivered by CloudTrail.
+
+### 4. CloudTrail
+
+CloudTrail records AWS account activity and management events.
+
+This provides visibility into control-plane actions such as EC2 security group changes and IAM policy attachment activity. These events would not appear in the operating-system logs of the EC2 instance, so CloudTrail is required for cloud-side detection.
+
+### 5. Amazon S3
+
+S3 stores retained CloudTrail logs.
+
+CloudTrail delivers logs to S3 for longer-term storage and later review, while CloudWatch Logs supports near-real-time monitoring and detection.
+
+### 6. Detection Layer
+
+Detection logic is implemented with CloudWatch Logs metric filters.
+
+Metric filters convert selected log patterns and CloudTrail events into custom CloudWatch metrics. Those metrics are then evaluated by CloudWatch alarms.
+
+### 7. Alerting Layer
+
+CloudWatch alarms evaluate custom metrics against thresholds.
+
+Amazon SNS delivers notifications when an alarm enters the `ALARM` state.
 
 ---
 
 ## Data Flow
 
-The monitoring pipeline is expected to work as follows:
+The lab contains two main monitoring paths: one host-side path and one cloud-side path.
 
 ### Host-Level Monitoring Flow
-1. Activity occurs on the EC2 instance
-2. The EC2 instance generates operating-system log entries
-3. Relevant logs are forwarded to CloudWatch Logs
-4. CloudWatch metric filters evaluate the log stream
-5. A CloudWatch alarm triggers if suspicious activity matches the detection logic
-6. SNS sends an alert notification
+
+1. Test SSH activity occurs against the EC2 instance
+2. The EC2 instance writes authentication events to `/var/log/auth.log`
+3. The CloudWatch Agent forwards those logs to CloudWatch Logs
+4. A CloudWatch Logs metric filter matches invalid-user SSH activity
+5. A custom CloudWatch metric receives a datapoint
+6. A CloudWatch alarm evaluates the metric against its threshold
+7. SNS sends an email notification when the alarm triggers
 
 ### AWS Control-Plane Monitoring Flow
-1. Activity occurs in the AWS account
+
+1. Security-relevant activity occurs in the AWS account
 2. CloudTrail records the management event
-3. CloudTrail delivers logs to S3
-4. Selected events are monitored for detection use cases
-5. CloudWatch alarms trigger when detection criteria are met
-6. SNS sends an alert notification
+3. CloudTrail delivers logs to S3 and CloudWatch Logs
+4. CloudWatch Logs metric filters match selected CloudTrail events
+5. Custom CloudWatch metrics receive datapoints
+6. CloudWatch alarms evaluate those metrics against thresholds
+7. SNS sends email notifications when alarms trigger
 
 ---
 
-## Planned Detection Use Cases
+## Implemented Detection Use Cases
 
-The initial architecture is designed to support the following detections:
+The architecture supports four validated detections.
 
-### Detection 1 - Repeated Failed SSH Logins
-This detection will identify repeated failed authentication attempts against the EC2 instance.
+### Detection 1 - Invalid SSH User Attempts
 
-### Detection 2 - Suspicious CloudTrail Activity
-This detection will identify selected AWS management events that should be reviewed, such as high-risk account activity or administrative changes.
+This detection identifies repeated invalid-user SSH login attempts against the EC2 instance.
+
+- **Source:** EC2 `/var/log/auth.log`
+- **Metric filter:** `invalid-user-ssh-attempts`
+- **Metric:** `CloudSecurityMonitoring / InvalidUserSSHAttempts`
+- **Alarm:** `invalid-user-ssh-attempts-alarm`
+
+### Detection 2 - Security Group Ingress Rule Removal
+
+This detection identifies security group ingress rule removal activity.
+
+- **Source:** CloudTrail
+- **Event name:** `RevokeSecurityGroupIngress`
+- **Metric filter:** `revoke-security-group-ingress`
+- **Metric:** `CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents`
+- **Alarm:** `revoke-security-group-ingress-alarm`
+
+### Detection 3 - Security Group Ingress Rule Addition
+
+This detection identifies security group ingress rule addition activity.
+
+- **Source:** CloudTrail
+- **Event name:** `AuthorizeSecurityGroupIngress`
+- **Metric filter:** `authorize-security-group-ingress`
+- **Metric:** `CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents`
+- **Alarm:** `authorize-security-group-ingress-alarm`
+
+### Detection 4 - IAM Managed Policy Attachment
+
+This detection identifies IAM managed policies being attached directly to users.
+
+- **Source:** CloudTrail
+- **Event name:** `AttachUserPolicy`
+- **Metric filter:** `attach-user-policy`
+- **Metric:** `CloudSecurityMonitoring / AttachUserPolicyEvents`
+- **Alarm:** `attach-user-policy-alarm`
 
 ---
 
@@ -97,24 +160,28 @@ This architecture is intentionally broader than a single host-based detection se
 
 A host-only lab can show how one system is attacked and how its local logs can be analyzed. This architecture goes further by showing how a defender can monitor both:
 
-- activity happening inside a system
-- activity happening across the AWS environment itself
+- activity happening inside a Linux system
+- activity happening across the AWS account control plane
+- network-control-plane changes through security group events
+- identity-control-plane changes through IAM events
 
-That distinction is important because real cloud security monitoring depends on visibility across multiple telemetry sources, not just one log file on one machine.
+That distinction matters because real cloud security monitoring depends on visibility across multiple telemetry sources, not just one log file on one machine.
 
 ---
 
 ## Architecture Summary
 
-This lab combines host monitoring and cloud monitoring into a single AWS-native workflow.
+This lab combines host monitoring and cloud control-plane monitoring into a single AWS-native workflow.
 
-The environment will include:
+The environment includes:
 
 - one EC2 instance as the monitored system
-- CloudWatch Logs for centralized host log collection
+- CloudWatch Agent for host log forwarding
+- CloudWatch Logs for centralized log collection
 - CloudTrail for AWS account activity logging
 - S3 for retained CloudTrail storage
-- CloudWatch metric filters and alarms for detection
+- CloudWatch metric filters for detection logic
+- CloudWatch alarms for threshold-based alerting
 - SNS for alert delivery
 
 Together, these components support a basic but realistic cloud security monitoring pipeline.
@@ -125,30 +192,56 @@ Together, these components support a basic but realistic cloud security monitori
 
 ```text
 HOST-LEVEL MONITORING PATH
-Attacker / Test Activity
+
+Test SSH Activity
         ↓
-EC2 Linux Instance (/var/log/auth.log)
+EC2 Linux Instance
+        ↓
+/var/log/auth.log
         ↓
 CloudWatch Agent
         ↓
-CloudWatch Logs (EC2 Auth Log Group)
+CloudWatch Logs
+cloud-security-monitoring-auth
         ↓
-Metric Filter: Failed SSH Login Pattern
+Metric Filter
+invalid-user-ssh-attempts
+        ↓
+Custom Metric
+CloudSecurityMonitoring / InvalidUserSSHAttempts
         ↓
 CloudWatch Alarm
+invalid-user-ssh-attempts-alarm
         ↓
 SNS Notification
 
 
 AWS CONTROL-PLANE MONITORING PATH
-AWS Account Activity (Console / API Events)
+
+AWS Account Activity
+(Security Group Changes / IAM Policy Attachment)
         ↓
 CloudTrail
-        ├──→ S3 Bucket (Trail Log Storage)
-        └──→ CloudWatch Logs (CloudTrail Log Group)
+        ├──→ S3 Bucket
+        │     Trail Log Storage
+        │
+        └──→ CloudWatch Logs
+              cloud-security-monitoring-cloudtrail
                     ↓
-          Metric Filter: Suspicious CloudTrail Activity
+              Metric Filters
+              - revoke-security-group-ingress
+              - authorize-security-group-ingress
+              - attach-user-policy
                     ↓
-              CloudWatch Alarm
+              Custom Metrics
+              - RevokeSecurityGroupIngressEvents
+              - AuthorizeSecurityGroupIngressEvents
+              - AttachUserPolicyEvents
+                    ↓
+              CloudWatch Alarms
+              - revoke-security-group-ingress-alarm
+              - authorize-security-group-ingress-alarm
+              - attach-user-policy-alarm
                     ↓
               SNS Notification
+```
