@@ -4,13 +4,13 @@
 
 This section documents the AWS resources and configuration steps used to build the cloud security monitoring lab.
 
-The goal of this phase is to create the monitoring environment first, before any attack simulation or detection logic is added.
+The goal of this phase was to create the monitoring environment before adding attack simulation, detection logic, alarms, or alert validation.
 
 ---
 
 ## Build Strategy
 
-The environment will be built in the following order:
+The environment was built in the following order:
 
 1. Create an S3 bucket for CloudTrail log storage
 2. Create an SNS topic for alert delivery
@@ -18,63 +18,166 @@ The environment will be built in the following order:
 4. Configure CloudTrail to send logs to S3
 5. Configure CloudTrail to send logs to CloudWatch Logs
 6. Launch a Linux EC2 instance
-7. Install and configure the CloudWatch Agent on the EC2 instance
-8. Forward host-level logs to CloudWatch Logs
-9. Validate that both host logs and CloudTrail logs are being collected successfully
+7. Attach an IAM role to the EC2 instance for CloudWatch Agent access
+8. Install and configure the CloudWatch Agent on the EC2 instance
+9. Forward host-level authentication logs to CloudWatch Logs
+10. Validate that both host logs and CloudTrail logs were being collected successfully
 
 ---
 
-## Core Resources to Build
+## Core Resources Built
 
 ### 1. S3 Bucket
-This bucket will store CloudTrail logs for retention and later review.
+
+An S3 bucket was used to store CloudTrail logs for retention and later review.
+
+CloudTrail delivers AWS account activity logs to this bucket, providing retained evidence of control-plane activity.
 
 ### 2. SNS Topic
-This topic will be used later for alert notifications when detections trigger.
+
+An SNS topic was created for alert notifications.
+
+This topic was later connected to CloudWatch alarms so that security-relevant events could generate email notifications.
+
+The SNS topic used in this lab was:
+
+```text
+cloud-security-monitoring-alerts
+```
 
 ### 3. CloudTrail Trail
-This trail will capture AWS management activity and deliver logs to both S3 and CloudWatch Logs.
+
+A CloudTrail trail was created to capture AWS management activity.
+
+The trail was configured to deliver logs to:
+
+- S3 for retained storage
+- CloudWatch Logs for monitoring and detection
+
+The CloudTrail trail used in this lab was:
+
+```text
+cloud-security-monitoring-trail
+```
 
 ### 4. CloudWatch Log Groups
-CloudWatch Logs will centralize:
-- EC2 authentication / host logs
-- CloudTrail management event logs
+
+CloudWatch Logs was used to centralize both host-level logs and AWS control-plane logs.
+
+The main log groups used in this lab were:
+
+```text
+cloud-security-monitoring-auth
+cloud-security-monitoring-cloudtrail
+```
+
+The `cloud-security-monitoring-auth` log group stores Linux authentication logs from the EC2 instance.
+
+The `cloud-security-monitoring-cloudtrail` log group stores AWS control-plane events delivered by CloudTrail.
 
 ### 5. EC2 Linux Instance
-This instance will act as the monitored host and will generate host-level telemetry during the lab.
 
-### 6. CloudWatch Agent
-The CloudWatch Agent will forward host-level logs from the EC2 instance into CloudWatch Logs.
+A Linux EC2 instance was launched as the monitored host.
+
+This instance generated host-level telemetry for the lab, including SSH authentication events written to:
+
+```text
+/var/log/auth.log
+```
+
+The EC2 instance was also used as the environment for validating CloudWatch Agent log forwarding.
+
+### 6. IAM Role for EC2
+
+An IAM role was attached to the EC2 instance so the CloudWatch Agent could send logs to CloudWatch.
+
+The EC2 role used in this lab was:
+
+```text
+cloud-security-monitoring-ec2-role
+```
+
+The role had the AWS managed policy:
+
+```text
+CloudWatchAgentServerPolicy
+```
+
+This allowed the EC2 instance to publish log data to CloudWatch Logs.
+
+### 7. CloudWatch Agent
+
+The CloudWatch Agent was installed and configured on the EC2 instance.
+
+The agent was configured to forward the following host log file:
+
+```text
+/var/log/auth.log
+```
+
+to the CloudWatch Logs log group:
+
+```text
+cloud-security-monitoring-auth
+```
 
 ---
 
-## Build Objectives
+## Build Objectives Completed
 
-By the end of this phase, the lab should have:
+By the end of this phase, the lab had:
 
-- a working EC2 instance
+- a working EC2 Linux instance
+- an IAM role attached to the EC2 instance for CloudWatch Agent permissions
 - CloudTrail enabled
 - CloudTrail logs stored in S3
-- CloudTrail logs available in CloudWatch Logs
-- host-level logs forwarded from EC2 to CloudWatch Logs
-- a prepared SNS topic for future alerting
+- CloudTrail logs delivered to CloudWatch Logs
+- host-level authentication logs forwarded from EC2 to CloudWatch Logs
+- an SNS topic prepared for alert delivery
+- a stable telemetry pipeline ready for detection engineering
 
 ---
 
-## Validation Goals
+## Validation Completed
 
-Before moving to attack simulation or detection engineering, the following must be confirmed:
+Before moving into attack simulation and detection engineering, the following were confirmed:
 
-- CloudTrail is actively recording AWS account activity
-- CloudTrail logs are arriving in S3
-- CloudTrail logs are visible in CloudWatch Logs
-- EC2 host logs are visible in CloudWatch Logs
-- the logging pipeline is stable and working as expected
+- CloudTrail was actively recording AWS account activity
+- CloudTrail logs were delivered to S3
+- CloudTrail logs were visible in CloudWatch Logs
+- EC2 host authentication logs were visible in CloudWatch Logs
+- the CloudWatch Agent was successfully forwarding `/var/log/auth.log`
+- the logging pipeline was stable enough to support metric filters, alarms, and SNS notifications
+
+---
+
+## Evidence
+
+The setup and build phase was supported by screenshots showing resource creation and telemetry validation, including:
+
+- EC2 instance status
+- IAM role attachment
+- CloudWatch Agent setup
+- CloudWatch log group creation
+- host authentication logs in CloudWatch
+- CloudTrail event delivery
+- SNS topic configuration
+
+Example evidence files include:
+
+```text
+ec2-instance-running.png
+ec2-instance-iam-role-attached.png
+cloudwatch-agent-running.png
+cloudwatch-auth-log-group-validation.png
+cloudtrail-log-group-events.png
+sns-topic-confirmed-subscription-icloud.png
+```
 
 ---
 
 ## Notes
 
-Detection logic and alarms will not be created during this phase.
+Detection logic and alarms were created after this setup phase.
 
-This phase is only focused on building and validating the telemetry pipeline.
+This phase focused on building and validating the telemetry foundation. The later detection and alerting sections build on this setup by creating CloudWatch metric filters, CloudWatch alarms, and SNS alert delivery paths.
