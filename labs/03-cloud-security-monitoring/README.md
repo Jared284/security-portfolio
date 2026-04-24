@@ -37,7 +37,7 @@ Specifically, it shows that I can:
 - create detection logic from real log patterns
 - turn those detections into CloudWatch metrics and alarms
 - route alerts through Amazon SNS
-- validate the entire path from attack activity to notification delivery
+- validate the entire path from security-relevant activity to notification delivery
 
 ## Telemetry Sources
 
@@ -64,7 +64,7 @@ CloudTrail is configured to send logs to:
 - **S3** for storage
 - **CloudWatch Logs** for monitoring
 
-This telemetry is used to detect security-relevant AWS administrative activity, including security group ingress rule addition and removal events.
+This telemetry is used to detect security-relevant AWS administrative activity, including security group ingress rule changes and IAM policy attachment events.
 
 ## Lab Architecture
 
@@ -72,7 +72,7 @@ At a high level, the lab works like this:
 
 1. An EC2 Ubuntu instance generates host-level authentication logs
 2. The CloudWatch Agent forwards `/var/log/auth.log` to CloudWatch Logs
-3. CloudTrail collects AWS control-plane activity and also forwards it to CloudWatch Logs
+3. CloudTrail collects AWS control-plane activity and forwards it to CloudWatch Logs
 4. CloudWatch metric filters turn selected log patterns into custom metrics
 5. CloudWatch alarms evaluate those metrics against defined thresholds
 6. Amazon SNS sends notifications when alarm conditions are met
@@ -116,11 +116,13 @@ The following components have been built:
 - CloudWatch alarm for security group ingress rule removal activity
 - custom metric filter for `AuthorizeSecurityGroupIngress` CloudTrail events
 - CloudWatch alarm for security group ingress rule addition activity
+- custom metric filter for `AttachUserPolicy` CloudTrail events
+- CloudWatch alarm for IAM managed policy attachment activity
 - SNS-based email notification path
 
 ### Completed Validation Work
 
-Both the host-side and cloud-side monitoring paths have now been validated end to end.
+Both the host-side and cloud-side monitoring paths have been validated end to end.
 
 ### Host-Side Validation
 
@@ -139,13 +141,15 @@ The CloudTrail-based monitoring path was validated by:
 
 - making controlled security group rule changes on the EC2 instance’s attached security group
 - identifying the resulting CloudTrail events `AuthorizeSecurityGroupIngress` and `RevokeSecurityGroupIngress`
+- attaching the AWS managed `IAMReadOnlyAccess` policy to a test IAM user
+- identifying the resulting CloudTrail event `AttachUserPolicy`
 - confirming those events in CloudTrail Event history
 - confirming the events were matched by CloudWatch metric filters
-- confirming the custom metrics `AuthorizeSecurityGroupIngressEvents` and `RevokeSecurityGroupIngressEvents`
+- confirming the custom metrics `AuthorizeSecurityGroupIngressEvents`, `RevokeSecurityGroupIngressEvents`, and `AttachUserPolicyEvents`
 - confirming the CloudWatch alarms entered the `ALARM` state
 - confirming SNS email alert delivery
 
-## Detection Implemented So Far
+## Detections Implemented
 
 ### 1. Host-Based Detection
 
@@ -190,9 +194,24 @@ This detection uses:
 
 This metric is used to trigger a CloudWatch alarm when a matching security group ingress rule addition event is detected.
 
-## Alerting Implemented So Far
+### 4. CloudTrail-Based Detection: AttachUserPolicy
 
-The lab currently includes three CloudWatch alarms:
+The fourth implemented detection focuses on IAM managed policy attachment activity.
+
+This detection uses:
+
+- **Telemetry source:** CloudTrail
+- **CloudWatch Logs log group:** `cloud-security-monitoring-cloudtrail`
+- **Event source:** `iam.amazonaws.com`
+- **Event name:** `AttachUserPolicy`
+- **Metric namespace:** `CloudSecurityMonitoring`
+- **Metric name:** `AttachUserPolicyEvents`
+
+This metric is used to trigger a CloudWatch alarm when a managed IAM policy is attached to a user.
+
+## Alerting Implemented
+
+The lab currently includes four CloudWatch alarms.
 
 ### Host-Side Alarm
 
@@ -212,7 +231,13 @@ The lab currently includes three CloudWatch alarms:
 - **Signal:** `AuthorizeSecurityGroupIngress` CloudTrail events
 - **Threshold:** greater than or equal to `1` within `5` minutes
 
-All three alarms publish notifications to the SNS topic:
+### CloudTrail-Side IAM Policy Attachment Alarm
+
+- **Alarm name:** `attach-user-policy-alarm`
+- **Signal:** `AttachUserPolicy` CloudTrail events
+- **Threshold:** greater than or equal to `1` within `5` minutes
+
+All four alarms publish notifications to the SNS topic:
 
 ```text
 cloud-security-monitoring-alerts
@@ -237,11 +262,12 @@ The goal of the screenshots is to support technical claims with direct evidence 
 
 ## What Has Been Finished vs. What Comes Next
 
-### Finished So Far
+### Finished Core Lab
 
-The lab now has three validated monitoring and alerting paths:
+The lab now has four validated monitoring and alerting paths.
 
-#### Host-side path
+#### Host-Side Path
+
 - attack simulation
 - host telemetry generation
 - centralized log ingestion
@@ -249,7 +275,8 @@ The lab now has three validated monitoring and alerting paths:
 - alarm triggering
 - SNS notification delivery
 
-#### CloudTrail-side path: ingress rule removal
+#### CloudTrail-Side Path: Ingress Rule Removal
+
 - CloudTrail event generation
 - CloudTrail event validation
 - CloudWatch log ingestion
@@ -257,7 +284,8 @@ The lab now has three validated monitoring and alerting paths:
 - alarm triggering
 - SNS notification delivery
 
-#### CloudTrail-side path: ingress rule addition
+#### CloudTrail-Side Path: Ingress Rule Addition
+
 - CloudTrail event generation
 - CloudTrail event validation
 - CloudWatch log ingestion
@@ -265,31 +293,35 @@ The lab now has three validated monitoring and alerting paths:
 - alarm triggering
 - SNS notification delivery
 
-### Still Planned
+#### CloudTrail-Side Path: IAM Managed Policy Attachment
 
-The lab is much stronger now, but it is still not final.
+- IAM policy attachment test action
+- CloudTrail event validation
+- CloudWatch log ingestion
+- detection engineering
+- alarm triggering
+- SNS notification delivery
 
-The next logical improvements include:
+### Future Improvements
 
-- adding more CloudTrail-side detections beyond security group ingress additions and removals
-- expanding cloud-side coverage to other high-signal AWS administrative events
-- adding more host-side detections beyond invalid-user SSH activity
-- improving cross-source correlation between host and cloud telemetry
-- expanding the reflections and improvements section as the lab matures
+The core lab is complete. Future improvements would expand detection coverage beyond the current validated signals.
 
 Strong future candidates include detections for:
 
 - failed AWS console login activity
-- IAM policy, role, or user changes
-- suspicious administrative API activity
-- trail modification or disablement attempts
+- `CreateAccessKey` events
+- `PutUserPolicy` events
+- `AttachRolePolicy` events
+- CloudTrail modification or disablement attempts
+- more host-side detections beyond invalid-user SSH activity
+- stronger correlation between host and cloud telemetry
 
 ## Key Takeaway
 
-This lab now demonstrates multiple cloud security monitoring paths in AWS.
+This lab demonstrates multiple cloud security monitoring paths in AWS.
 
 On the host side, it shows how Linux authentication telemetry can be collected, centralized, converted into a custom detection metric, and escalated into an alert.
 
-On the cloud side, it shows how AWS control-plane activity captured by CloudTrail can be turned into custom security metrics for both security group ingress rule additions and removals, evaluated by CloudWatch alarms, and delivered through SNS.
+On the cloud side, it shows how AWS control-plane activity captured by CloudTrail can be turned into custom security metrics for security group ingress rule additions, security group ingress rule removals, and IAM managed policy attachments.
 
-Together, these paths show that I can build and validate a cloud-native monitoring workflow in AWS across both workload-level and control-plane visibility.
+Together, these paths show that I can build and validate a cloud-native monitoring workflow in AWS across workload-level logs, network-control-plane activity, and identity-control-plane activity.
