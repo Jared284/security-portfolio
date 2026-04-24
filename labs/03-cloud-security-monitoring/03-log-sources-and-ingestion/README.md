@@ -7,7 +7,9 @@ The goal of this phase was to establish the telemetry foundation for the lab by 
 - the EC2 monitoring host
 - the AWS control plane
 
-This mattered because the rest of the lab depends on reliable log collection before any detection engineering or alerting can happen.
+This mattered because the rest of the lab depends on reliable log collection before detection engineering or alerting can happen.
+
+---
 
 ## Telemetry Sources
 
@@ -38,18 +40,25 @@ This telemetry includes events such as:
 
 - API calls made against AWS services
 - changes to security groups
+- IAM permission changes
 - resource enumeration actions
 - other management-plane operations
 
-For this lab, the most important cloud-side event validated so far was:
+For this lab, the most important cloud-side events validated were:
 
 ```text
 RevokeSecurityGroupIngress
+AuthorizeSecurityGroupIngress
+AttachUserPolicy
 ```
+
+These events provided visibility into both network-control-plane changes and identity-control-plane changes.
+
+---
 
 ## Ingestion Architecture
 
-The lab uses two different ingestion paths depending on the telemetry source.
+The lab uses two ingestion paths depending on the telemetry source.
 
 ### Host-Side Ingestion Path
 
@@ -59,8 +68,8 @@ High-level flow:
 
 1. the EC2 instance generates SSH authentication events in `/var/log/auth.log`
 2. the CloudWatch Agent reads the log file
-3. the agent forwards matching log data into CloudWatch Logs
-4. the logs become available for centralized monitoring and later detection engineering
+3. the agent forwards the log data into CloudWatch Logs
+4. the logs become available for centralized monitoring and detection engineering
 
 ### CloudTrail-Side Ingestion Path
 
@@ -74,6 +83,8 @@ High-level flow:
 4. CloudTrail also delivers the event to CloudWatch Logs for monitoring and detection use
 
 This allows the lab to use CloudWatch for both host-generated and AWS-generated telemetry.
+
+---
 
 ## Log Groups Used
 
@@ -95,17 +106,25 @@ CloudTrail events were delivered into the CloudWatch log group:
 cloud-security-monitoring-cloudtrail
 ```
 
-This log group was used later for the CloudTrail-side security group change detection.
+This log group was used later for CloudTrail-side detections covering:
+
+- security group ingress rule removal
+- security group ingress rule addition
+- IAM managed policy attachment
+
+---
 
 ## Supporting AWS Components
 
-The following AWS components were used to support ingestion:
+The following AWS components were used to support ingestion.
 
 ### EC2 Monitoring Host
 
 - **Instance name:** `cloud-security-monitoring-host`
 - **OS:** Ubuntu
-- generated the host-side authentication telemetry used in the lab
+- **Primary host log source:** `/var/log/auth.log`
+
+The EC2 instance generated the host-side authentication telemetry used in the lab.
 
 ### IAM Role for EC2 Log Forwarding
 
@@ -122,7 +141,9 @@ This trail captured AWS control-plane activity and delivered it to both S3 and C
 
 ### S3 Bucket
 
-CloudTrail was configured to send logs to S3 for storage in addition to CloudWatch monitoring.
+CloudTrail was configured to send logs to S3 for retained storage in addition to CloudWatch monitoring.
+
+---
 
 ## Why These Sources Were Chosen
 
@@ -131,10 +152,13 @@ These two sources were chosen because together they provide visibility across tw
 - **inside the workload** through Linux host authentication logs
 - **inside the AWS account** through CloudTrail administrative activity
 
-That combination makes the lab stronger than a single-source logging project because it demonstrates monitoring across both:
+That combination makes the lab stronger than a single-source logging project because it demonstrates monitoring across:
 
 - workload-level behavior
-- cloud control-plane behavior
+- cloud network-control-plane behavior
+- cloud identity-control-plane behavior
+
+---
 
 ## Validation
 
@@ -162,13 +186,22 @@ I confirmed that AWS administrative activity appeared in the CloudWatch log grou
 cloud-security-monitoring-cloudtrail
 ```
 
-I also confirmed specific CloudTrail events through Event history, including the security group ingress rule removal event used later in detection engineering.
+I also confirmed specific CloudTrail events through Event history, including:
+
+```text
+RevokeSecurityGroupIngress
+AuthorizeSecurityGroupIngress
+AttachUserPolicy
+```
 
 This proved that:
 
 - CloudTrail was recording AWS control-plane activity correctly
 - CloudTrail delivery into CloudWatch Logs was working
-- the cloud-side telemetry source was available for detection engineering
+- network-control-plane events were available for detection engineering
+- IAM-control-plane events were available for detection engineering
+
+---
 
 ## How This Supports Later Phases
 
@@ -182,18 +215,22 @@ Without this phase, the later sections would not be possible:
 
 In other words, this phase established the raw data pipeline that the rest of the lab builds on.
 
+---
+
 ## Limitations
 
-At this stage, ingestion is functional but still simple.
+The ingestion layer is functional but intentionally small.
 
 Current limitations include:
 
-- the host-side ingestion path currently focuses mainly on one Linux log source
-- the cloud-side ingestion path has only been used for a limited set of CloudTrail detections so far
+- the host-side ingestion path focuses mainly on one Linux log source
+- the cloud-side ingestion path is limited to selected CloudTrail management events
 - logs are centralized, but not normalized into a broader SIEM platform
 - correlation between telemetry sources is not yet implemented
 
 Even with those limitations, this phase provides the core telemetry foundation needed for the rest of the project.
+
+---
 
 ## Evidence
 
@@ -205,14 +242,20 @@ Even with those limitations, this phase provides the core telemetry foundation n
 
 ![CloudTrail log group showing control-plane event records in CloudWatch](../screenshots/cloudtrail-log-group-events.png)
 
+### CloudTrail IAM Event Validation
+
+![CloudTrail Event history showing AttachUserPolicy event](../screenshots/cloudtrail-attach-user-policy-event.png)
+
+---
 
 ## Key Takeaway
 
 This phase established the telemetry foundation for the lab by centralizing both Linux host authentication logs and AWS control-plane activity into CloudWatch Logs.
 
-That groundwork made it possible to build detections and alerts on top of both:
+That groundwork made it possible to build detections and alerts on top of:
 
 - host-level authentication events
-- cloud-level administrative events
+- cloud network-control-plane events
+- cloud identity-control-plane events
 
 This is what allowed the rest of the lab to evolve from simple log collection into a real cloud security monitoring workflow.
