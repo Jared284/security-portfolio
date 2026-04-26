@@ -2,18 +2,21 @@
 
 ## Current Reflection
 
-This lab is now much stronger than a basic AWS logging demo because it moved beyond setup and into real validation across multiple telemetry sources and multiple cloud control-plane detections.
+This lab is much stronger than a basic AWS logging demo because it moved beyond setup and into validated detection and alerting across multiple telemetry sources.
 
-At this stage, I have successfully built and validated both:
+At this stage, I successfully built and validated:
 
 - a **host-side monitoring path** based on Linux authentication logs from an EC2 instance
-- a **cloud-side monitoring path** based on AWS control-plane activity captured through CloudTrail
+- a **cloud network-control-plane monitoring path** based on AWS security group changes captured through CloudTrail
+- a **cloud identity-control-plane monitoring path** based on IAM policy attachment activity captured through CloudTrail
 
-That matters because the lab is not limited to one narrow signal type. Instead, it now demonstrates monitoring across both workload-level and administrative activity in AWS.
+That matters because the lab is not limited to one narrow signal type. It demonstrates monitoring across workload-level activity, AWS network administration, and AWS identity administration.
 
-## What This Lab Does Well So Far
+---
 
-The strongest part of the lab right now is that it contains multiple complete monitoring pipelines.
+## What This Lab Does Well
+
+The strongest part of the lab is that it contains multiple complete monitoring pipelines.
 
 ### 1. Host-Side Signal Path
 
@@ -39,7 +42,7 @@ The first cloud-side path demonstrates:
 5. a CloudWatch alarm evaluated the event against a threshold
 6. Amazon SNS delivered the resulting alert by email
 
-This is valuable because it shows that the lab can monitor security-relevant AWS administrative actions that reduce or change network exposure.
+This is valuable because it shows that the lab can monitor AWS administrative actions that modify network access controls.
 
 ### 3. CloudTrail-Side Signal Path: Ingress Rule Addition
 
@@ -52,7 +55,20 @@ The second cloud-side path demonstrates:
 5. a CloudWatch alarm evaluated the event against a threshold
 6. Amazon SNS delivered the resulting alert by email
 
-This is valuable because it shows that the lab can also monitor when network exposure is opened, not just when it is reduced or removed.
+This is valuable because it shows that the lab can monitor when network exposure is opened, not just when access rules are removed.
+
+### 4. CloudTrail-Side Signal Path: IAM Managed Policy Attachment
+
+The IAM path demonstrates:
+
+1. a managed IAM policy was attached to a test IAM user
+2. CloudTrail recorded the resulting `AttachUserPolicy` event
+3. the event was available for CloudWatch-based detection
+4. a metric filter converted the event into a custom metric
+5. a CloudWatch alarm evaluated the event against a threshold
+6. Amazon SNS delivered the resulting alert by email
+
+This is valuable because IAM changes are one of the most important areas of AWS security monitoring. A policy attachment can represent normal administration, but it can also indicate privilege expansion if performed unexpectedly.
 
 ### Why That Matters
 
@@ -60,12 +76,16 @@ Together, these paths make the project more credible because they demonstrate:
 
 - multi-source telemetry collection
 - centralized monitoring in AWS
-- basic cloud-native detection engineering
+- host-based detection engineering
+- CloudTrail-based control-plane detection engineering
+- monitoring for network exposure changes
+- monitoring for IAM permission changes
 - threshold-based alerting
 - end-to-end validation of security controls
-- monitoring of both workload activity and AWS control-plane changes
 
-The project also benefits from being organized into separate sections for architecture, build, ingestion, attack simulation, detection engineering, alerting, and reflections. That structure makes it easier to explain and defend.
+The project also benefits from being organized into separate sections for architecture, build, ingestion, validation activity, detection engineering, alerting, and reflections. That structure makes it easier to explain and defend.
+
+---
 
 ## Challenges Encountered
 
@@ -88,34 +108,43 @@ Another useful lesson came from working with CloudTrail and CloudWatch Logs. The
 
 That mattered because it reinforced the importance of validating the event source and event name directly rather than guessing and building a filter blindly.
 
-A separate lesson came from attempting to use failed console login activity as the next cloud-side detection. While `ConsoleLogin` events were visible and the success state was easy to inspect, failed-login validation became messy enough that it was not the best use of time for this phase of the lab. Pivoting to paired security group change detections was the better decision because it produced faster, cleaner, and more defensible results.
+A separate lesson came from attempting to use failed console login activity as the next cloud-side detection. While `ConsoleLogin` events were visible and the success state was easy to inspect, failed-login validation became messy enough that it was not the best use of time for this phase of the lab. Pivoting to security group changes and IAM policy attachment produced cleaner, more defensible detection paths.
+
+Another important lesson was that CloudWatch metric graphs need to be viewed carefully. For event-count detections, using the `Sum` statistic is important because other views can make the graph look misleading or empty even when the metric filter is working.
+
+---
 
 ## Current Limitations
 
-Even though the lab is much stronger now, it is still not complete.
+The core lab is complete, but it is still intentionally small.
 
-The main limitations right now are:
+The main limitations are:
 
-- the host-side detection path still centers on one main SSH-related behavior
-- the cloud-side detection path currently centers on a small set of related event types: `AuthorizeSecurityGroupIngress` and `RevokeSecurityGroupIngress`
+- the host-side detection path centers on one SSH-related behavior
+- the cloud-side detection path covers a small set of selected CloudTrail events
+- the IAM detection coverage is limited to `AttachUserPolicy`
 - alerting is currently email-based only
 - there is no automated response or remediation action
 - the host-side detection uses simple string matching rather than richer parsing
-- the cloud-side detections use specific event filters rather than broader control-plane correlation
+- the CloudTrail-side detections use specific event filters rather than broader control-plane correlation
 - the lab does not yet correlate host-level activity with AWS control-plane activity
 
-These limitations do not weaken the validated work that already exists, but they do define what still needs to improve for the project to feel more mature.
+These limitations do not weaken the validated work. They define the boundary of this version of the lab and point toward future improvements.
 
-## Most Important Next Improvements
+---
 
-The biggest next improvement is to expand the cloud-side detection coverage beyond security group ingress modifications.
+## Most Important Future Improvements
 
-That means implementing additional CloudTrail-based detections for AWS administrative activity, such as:
+The biggest future improvement would be to expand CloudTrail-side detection coverage beyond the current validated signals.
+
+Strong future candidates include:
 
 - failed AWS console login activity
-- IAM policy, role, or user changes
+- `CreateAccessKey` events
+- `PutUserPolicy` events
+- `AttachRolePolicy` events
+- CloudTrail modification or disablement attempts
 - suspicious administrative API activity
-- trail modification or disablement attempts
 
 Beyond that, the lab could be improved further by:
 
@@ -125,6 +154,8 @@ Beyond that, the lab could be improved further by:
 - improving screenshot consistency and diagram polish
 - documenting analyst follow-up steps more deeply for each alert type
 - clarifying how host-side and cloud-side detections complement each other
+
+---
 
 ## What I Would Improve in a Future Version
 
@@ -139,18 +170,27 @@ Future improvements could include:
 - clearer severity tiers for different alert types
 - more formal investigation playbooks for each detection
 - better architectural visualization of the monitoring paths
+- optional MITRE ATT&CK mapping for the detection logic
 
 I would also want to strengthen the narrative around why different telemetry sources matter and how they can be used together to improve visibility.
 
+---
+
 ## Key Takeaway
 
-The most important outcome so far is that this lab now proves I can build and validate real monitoring paths in AWS across both:
+The most important outcome is that this lab proves I can build and validate real monitoring paths in AWS across:
 
 - host-level Linux authentication telemetry
-- AWS control-plane activity captured through CloudTrail
+- AWS network-control-plane activity captured through CloudTrail
+- AWS identity-control-plane activity captured through CloudTrail
 
-More specifically, the cloud-side coverage now includes detection and alerting for both security group ingress rule additions and removals, which makes the control-plane monitoring story more complete than a single one-off event.
+More specifically, the lab now includes detection and alerting for:
+
+- repeated invalid-user SSH attempts
+- security group ingress rule removals
+- security group ingress rule additions
+- IAM managed policy attachments
 
 That is a meaningful step up from a simple AWS setup exercise.
 
-At the same time, the project is still unfinished, and that matters. The next phase is to expand the number and quality of detections so the final lab shows broader cloud detection engineering depth rather than just a small set of validated signal paths.
+The project is still small compared with a production SIEM or mature cloud detection program, but the core workflow is real: generate activity, capture telemetry, create detection logic, trigger an alarm, and validate notification delivery.
