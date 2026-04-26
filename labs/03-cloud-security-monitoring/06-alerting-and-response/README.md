@@ -4,27 +4,31 @@
 
 The goal of this phase was to turn the custom detection metrics built earlier in the lab into actionable alerts and validate end-to-end notification delivery.
 
-At this stage, the lab includes three alerting paths:
+At this stage, the lab includes four alerting paths:
 
 1. **Host-side alerting** for repeated invalid-user SSH attempts
 2. **CloudTrail-side alerting** for security group ingress rule removal events
 3. **CloudTrail-side alerting** for security group ingress rule addition events
+4. **CloudTrail-side alerting** for IAM managed policy attachment events
 
-Together, these alerting paths show that both host activity and AWS control-plane activity can move from detection to real notification delivery.
+Together, these alerting paths show that host activity, AWS network-control-plane activity, and AWS identity-control-plane activity can move from detection to real notification delivery.
+
+---
 
 ## Alerting Scope
 
-This phase now includes alerting for three different security signals:
+This phase includes alerting for four different security signals:
 
 - **Host-based signal:** `InvalidUserSSHAttempts`
 - **CloudTrail-based signal:** `RevokeSecurityGroupIngressEvents`
 - **CloudTrail-based signal:** `AuthorizeSecurityGroupIngressEvents`
+- **CloudTrail-based signal:** `AttachUserPolicyEvents`
 
 This matters because the lab is intended to show not just detection, but the ability to turn those detections into meaningful alerts.
 
 ---
 
-## Host-Side Alerting
+## Host-Side Alerting: Invalid SSH User Attempts
 
 ### Alerting Logic
 
@@ -49,7 +53,7 @@ I created a CloudWatch alarm with the following logic:
 
 In practice, this meant that if the metric count exceeded three invalid-user SSH attempts during the evaluation period, the alarm would transition into the `ALARM` state.
 
-### Host-Side Validation
+### Validation
 
 I validated the host-side alerting path by reusing the host-based detection signal created during attack simulation.
 
@@ -79,7 +83,7 @@ I confirmed successful delivery by receiving the email notification containing:
 
 This proved that the host-side monitoring pipeline extended beyond detection and into actual notification delivery.
 
-### Operational Meaning of the Host-Side Alert
+### Operational Meaning
 
 This alert indicates that the EC2 monitoring host received repeated SSH login attempts involving invalid usernames within a short time window.
 
@@ -103,7 +107,7 @@ In a real environment, this alert would justify follow-up investigation such as:
 
 ### Alerting Logic
 
-The first cloud-side alert was based on the custom CloudWatch metric:
+This cloud-side alert was based on the custom CloudWatch metric:
 
 ```text
 CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents
@@ -130,7 +134,7 @@ I created a CloudWatch alarm with the following logic:
 
 In practice, this meant that a single detected `RevokeSecurityGroupIngress` event within the evaluation period was enough to transition the alarm into the `ALARM` state.
 
-### Why the Cloud-Side Threshold Is Different
+### Why the Threshold Is Different
 
 This threshold is intentionally different from the host-side SSH alarm.
 
@@ -140,7 +144,7 @@ For security group ingress rule removal, however, a single event is already sign
 
 That makes a threshold of `>= 1` appropriate for this type of alert.
 
-### CloudTrail-Side Validation
+### Validation
 
 I validated the cloud-side alerting path by generating a real AWS administrative action against the EC2 instance’s attached security group.
 
@@ -176,7 +180,7 @@ I confirmed successful delivery by receiving the email notification containing:
 
 This proved that the cloud-side monitoring pipeline also extended beyond detection and into real alert delivery.
 
-### Operational Meaning of the Revoke Alert
+### Operational Meaning
 
 This alert indicates that an ingress rule was removed from an AWS security group.
 
@@ -201,7 +205,7 @@ In a real environment, this alert would justify follow-up investigation such as:
 
 ### Alerting Logic
 
-The second cloud-side alert was based on the custom CloudWatch metric:
+This cloud-side alert was based on the custom CloudWatch metric:
 
 ```text
 CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents
@@ -241,7 +245,7 @@ That matters because an ingress rule addition may represent:
 
 Together, the authorize and revoke alerts provide more complete monitoring coverage of security group change activity.
 
-### CloudTrail-Side Validation
+### Validation
 
 I validated the authorize alerting path by generating a real AWS administrative action against the EC2 instance’s attached security group.
 
@@ -277,7 +281,7 @@ I confirmed successful delivery by receiving the email notification containing:
 
 This proved that the authorize detection path also extended beyond detection and into real alert delivery.
 
-### Operational Meaning of the Authorize Alert
+### Operational Meaning
 
 This alert indicates that an ingress rule was added to an AWS security group.
 
@@ -298,6 +302,118 @@ In a real environment, this alert would justify follow-up investigation such as:
 
 ---
 
+## CloudTrail-Side Alerting: AttachUserPolicy
+
+### Alerting Logic
+
+This IAM-focused cloud-side alert was based on the custom CloudWatch metric:
+
+```text
+CloudSecurityMonitoring / AttachUserPolicyEvents
+```
+
+This metric counted CloudTrail events where a managed IAM policy was attached directly to a user.
+
+The underlying event of interest was:
+
+```text
+AttachUserPolicy
+```
+
+### Alarm Configuration
+
+I created a CloudWatch alarm with the following logic:
+
+- **Alarm name:** `attach-user-policy-alarm`
+- **Metric:** `AttachUserPolicyEvents`
+- **Namespace:** `CloudSecurityMonitoring`
+- **Threshold:** greater than or equal to `1`
+- **Evaluation window:** `1` datapoint within `5` minutes
+- **Alarm action:** publish notification to SNS topic `cloud-security-monitoring-alerts`
+
+In practice, this meant that a single detected `AttachUserPolicy` event within the evaluation period was enough to transition the alarm into the `ALARM` state.
+
+### Why This Alert Matters
+
+This alert adds identity-control-plane coverage to the lab.
+
+A managed policy attachment can be legitimate administrative activity, but it can also indicate privilege expansion if performed unexpectedly. In a real AWS environment, attaching a powerful policy to a user could expand access quickly and materially change account risk.
+
+This alert is useful because it provides visibility into IAM permission changes that could indicate:
+
+- unauthorized access expansion
+- privilege escalation
+- risky administrative activity
+- post-compromise permission changes
+- direct attachment of sensitive managed policies
+
+Even though the lab used `IAMReadOnlyAccess` for safe validation, the same alerting logic would also catch higher-impact policy attachments.
+
+### Validation
+
+I validated the IAM alerting path by attaching the AWS managed `IAMReadOnlyAccess` policy to a test IAM user.
+
+The test user was:
+
+```text
+attach-policy-test-user
+```
+
+#### 1. Alarm Trigger Validation
+
+The policy attachment generated a CloudTrail `AttachUserPolicy` event.
+
+That event was:
+
+- recorded in CloudTrail
+- matched by the CloudWatch Logs metric filter
+- converted into the custom metric `AttachUserPolicyEvents`
+
+After the new datapoint was registered, CloudWatch transitioned the `attach-user-policy-alarm` alarm into the `ALARM` state.
+
+This validated that:
+
+- the IAM metric threshold logic was working
+- the alarm was tied to the correct custom metric
+- the alarm condition was evaluated successfully within the configured time window
+
+#### 2. Notification Delivery Validation
+
+Once the alarm entered the `ALARM` state, CloudWatch published the alert to the SNS topic.
+
+I confirmed successful delivery by receiving the email notification containing:
+
+- the alarm name
+- the `ALARM` state transition
+- the threshold-crossed message
+- the timestamp of the event
+- the CloudWatch alarm reference link
+
+This proved that the IAM detection path extended beyond detection and into real alert delivery.
+
+### Operational Meaning
+
+This alert indicates that a managed IAM policy was attached directly to a user.
+
+From an analyst perspective, that behavior could represent:
+
+- legitimate IAM administration
+- unauthorized permission expansion
+- privilege escalation
+- attacker access expansion after credential compromise
+- persistence or preparation for broader AWS access
+
+In a real environment, this alert would justify follow-up investigation such as:
+
+- confirming who attached the policy
+- reviewing which user received the policy
+- reviewing which policy was attached
+- determining whether the change was expected or approved
+- checking for other IAM activity before and after the event
+- reviewing whether the actor had unusual source IP, session, or access-key characteristics
+
+---
+
 ## SNS Notification Path
 
 To support alert delivery, I configured an Amazon SNS topic for notifications:
@@ -313,6 +429,9 @@ This SNS topic was used for:
 - the host-side invalid-user SSH alarm
 - the CloudTrail-side security group ingress removal alarm
 - the CloudTrail-side security group ingress addition alarm
+- the CloudTrail-side IAM managed policy attachment alarm
+
+---
 
 ## Troubleshooting During Validation
 
@@ -333,6 +452,8 @@ This troubleshooting process helped isolate the failure domain correctly:
 
 That troubleshooting mattered because it reinforced that alert delivery paths need to be validated just as carefully as the detection logic itself.
 
+---
+
 ## Limitations
 
 This alerting workflow still has several limitations:
@@ -343,8 +464,11 @@ This alerting workflow still has several limitations:
 - the cloud-side alarms are based on a small set of specific CloudTrail event types
 - the workflow does not yet correlate host-side and cloud-side events together
 - thresholds and alerting logic are intentionally simple for the initial lab implementation
+- IAM alerting is limited to one event type in this version of the lab
 
-Even with those limitations, this phase provides strong proof that the lab can move from raw telemetry to detection, thresholding, and real alert delivery for both host-level and cloud control-plane activity.
+Even with those limitations, this phase provides strong proof that the lab can move from raw telemetry to detection, thresholding, and real alert delivery for host-level activity, network-control-plane activity, and identity-control-plane activity.
+
+---
 
 ## Evidence
 
@@ -372,12 +496,24 @@ Even with those limitations, this phase provides strong proof that the lab can m
 
 ![Email notification showing successful delivery of the AuthorizeSecurityGroupIngress alarm](../screenshots/sns-email-authorize-security-group-ingress-alarm.png)
 
+### IAM AttachUserPolicy CloudWatch Alarm Trigger
+
+![CloudWatch alarm entering the ALARM state after an AttachUserPolicy event was detected](../screenshots/cloudwatch-alarm-attach-user-policy-triggered.png)
+
+### IAM AttachUserPolicy SNS Email Alert Delivery
+
+![Email notification showing successful delivery of the AttachUserPolicy alarm](../screenshots/sns-email-attach-user-policy-alarm.png)
+
+---
+
 ## Key Takeaway
 
-This phase completed three end-to-end alerting paths in the lab.
+This phase completed four end-to-end alerting paths in the lab.
 
 On the host side, repeated invalid-user SSH attempts were converted into the `InvalidUserSSHAttempts` metric, evaluated by a CloudWatch alarm, and delivered through SNS.
 
-On the cloud side, AWS security group ingress rule removal and addition events were converted into the `RevokeSecurityGroupIngressEvents` and `AuthorizeSecurityGroupIngressEvents` metrics, evaluated by CloudWatch alarms, and delivered through SNS.
+On the cloud network-control-plane side, AWS security group ingress rule removal and addition events were converted into the `RevokeSecurityGroupIngressEvents` and `AuthorizeSecurityGroupIngressEvents` metrics, evaluated by CloudWatch alarms, and delivered through SNS.
 
-Together, these alerting paths show that the lab can move from both host telemetry and AWS administrative activity to centralized detection, alarm state changes, and actionable notification delivery.
+On the cloud identity-control-plane side, IAM managed policy attachment events were converted into the `AttachUserPolicyEvents` metric, evaluated by a CloudWatch alarm, and delivered through SNS.
+
+Together, these alerting paths show that the lab can move from host telemetry and AWS administrative activity to centralized detection, alarm state changes, and actionable notification delivery.
