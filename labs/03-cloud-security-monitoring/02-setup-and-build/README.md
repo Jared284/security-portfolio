@@ -163,16 +163,7 @@ The setup and build phase was supported by screenshots showing resource creation
 - CloudTrail event delivery
 - SNS topic configuration
 
-Example evidence files include:
-
-```text
-ec2-instance-running.png
-ec2-instance-iam-role-attached.png
-cloudwatch-agent-running.png
-cloudwatch-auth-log-group-validation.png
-cloudtrail-log-group-events.png
-sns-topic-confirmed-subscription-icloud.png
-```
+These screenshots support the setup phase by showing that the core AWS resources were created and that the initial telemetry pipeline was working before detection logic was added.
 
 ---
 
