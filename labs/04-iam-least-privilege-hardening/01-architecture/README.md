@@ -186,3 +186,16 @@ Over-permissioned identity
 ```
 
 The result was a restricted IAM user that could still perform its intended read-only task while unnecessary S3 and IAM permissions were removed.
+
+
+## Architecture Evidence
+
+The following screenshots support the architecture and access-control flow documented above:
+
+| Evidence | Screenshot |
+|---|---|
+| IAM user used for testing | [`iam-user-lab4-junior-analyst-created.png`](../screenshots/iam-user-lab4-junior-analyst-created.png) |
+| Initial over-permissioned policy | [`initial-overpermissive-policy-attached.png`](../screenshots/initial-overpermissive-policy-attached.png) |
+| AWS CLI identity validation | [`aws-cli-get-caller-identity.png`](../screenshots/aws-cli-get-caller-identity.png) |
+| Least-privilege policy attached | [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png) |
+| CloudTrail audit evidence | [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png) |
