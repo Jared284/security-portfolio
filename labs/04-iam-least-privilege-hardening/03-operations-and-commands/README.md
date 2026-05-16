@@ -1,14 +1,28 @@
 # Operations and Commands
 
-This section documents the AWS CLI commands used to validate identity, test S3 access, test denied IAM actions, and verify CloudTrail audit evidence.
+## Purpose
 
-All commands were run using the dedicated lab profile:
+This section documents the AWS CLI commands used to validate identity, test S3 permissions, verify least-privilege remediation, test denied IAM actions, and confirm CloudTrail audit evidence.
+
+The goal was to test access from the perspective of the restricted IAM user, not from an administrator account.
+
+All commands were run using the dedicated AWS CLI profile:
 
 ```powershell
 --profile lab4-junior-analyst
 ```
 
-This ensured the tests were performed from the perspective of the restricted IAM user, not from an administrator account.
+## Command Flow
+
+```text
+Verify identity
+→ test baseline broad S3 access
+→ apply least-privilege remediation
+→ retest required read access
+→ test denied S3 actions
+→ test denied IAM actions
+→ verify CloudTrail audit evidence
+```
 
 ## 1. Identity Verification
 
@@ -18,7 +32,7 @@ Before testing permissions, I confirmed which AWS identity the CLI profile was u
 aws sts get-caller-identity --profile lab4-junior-analyst
 ```
 
-Expected result:
+Expected identity:
 
 ```text
 arn:aws:iam::211125298316:user/lab4-junior-analyst
@@ -27,21 +41,29 @@ arn:aws:iam::211125298316:user/lab4-junior-analyst
 Purpose:
 
 - Confirm the AWS CLI was using the intended IAM user.
-- Prevent accidentally testing with an administrator or personal account.
+- Prevent accidentally testing with an administrator account.
 - Establish a clean baseline before access validation.
 
 Evidence:
 
-- `../screenshots/aws-cli-get-caller-identity.png`
+- [`aws-cli-get-caller-identity.png`](../screenshots/aws-cli-get-caller-identity.png)
 
 ## 2. Baseline S3 Access Before Remediation
 
-The IAM user initially had the AWS managed `AmazonS3FullAccess` policy attached. This was intentionally over-permissioned to simulate a common cloud misconfiguration.
+The IAM user initially had the AWS managed `AmazonS3FullAccess` policy attached.
 
-### List all buckets
+This was intentionally over-permissioned to simulate a common cloud misconfiguration.
+
+### List all S3 buckets
 
 ```powershell
 aws s3 ls --profile lab4-junior-analyst
+```
+
+Result:
+
+```text
+Allowed
 ```
 
 Purpose:
@@ -49,21 +71,25 @@ Purpose:
 - Test whether the user could enumerate S3 buckets across the account.
 - Validate that the initial policy granted broader access than the role required.
 
-Result:
+Security meaning:
 
-```text
-Allowed
-```
+The user could view S3 buckets beyond the assigned lab bucket. This increased reconnaissance risk and showed that the starting permission set was too broad.
 
 Evidence:
 
-- `../screenshots/s3-access-allowed-before-remediation.png`
+- [`s3-access-allowed-before-remediation.png`](../screenshots/s3-access-allowed-before-remediation.png)
 
-### Upload object to lab bucket
+### Upload object to the lab bucket
 
 ```powershell
 echo "This is a harmless test file for Lab 4 IAM least-privilege access testing." > lab4-test-file.txt
 aws s3 cp lab4-test-file.txt s3://jw-lab4-iam-test-bucket-2026/ --profile lab4-junior-analyst
+```
+
+Result:
+
+```text
+Allowed
 ```
 
 Purpose:
@@ -71,21 +97,37 @@ Purpose:
 - Test whether the user could write objects to S3.
 - Demonstrate that the original permissions allowed actions beyond the intended read-only role.
 
-Result:
+Security meaning:
 
-```text
-Allowed
-```
+The user had unnecessary write access. For a read-only analyst role, upload capability increases risk because the identity can modify cloud storage contents.
 
 Evidence:
 
-- `../screenshots/s3-object-upload-allowed-before-remediation.png`
+- [`s3-object-upload-allowed-before-remediation.png`](../screenshots/s3-object-upload-allowed-before-remediation.png)
 
-## 3. Access Validation After Least-Privilege Remediation
+## 3. Least-Privilege Remediation
 
-After replacing broad S3 access with a scoped read-only policy, I retested both intended and risky actions.
+The broad `AmazonS3FullAccess` policy was removed and replaced with a custom scoped policy.
 
-### Confirm assigned bucket read access
+The remediated policy allowed only:
+
+- `s3:ListBucket` on `jw-lab4-iam-test-bucket-2026`
+- `s3:GetObject` on objects inside `jw-lab4-iam-test-bucket-2026`
+
+Policy file:
+
+- [`least-privilege-s3-read-policy.json`](../policies/least-privilege-s3-read-policy.json)
+
+Evidence:
+
+- [`least-privilege-policy-created.png`](../screenshots/least-privilege-policy-created.png)
+- [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png)
+
+## 4. Required Access Validation After Remediation
+
+After replacing broad S3 access with a scoped read-only policy, I retested the actions the user should still be able to perform.
+
+### List assigned lab bucket
 
 ```powershell
 aws s3 ls s3://jw-lab4-iam-test-bucket-2026 --profile lab4-junior-analyst
@@ -102,10 +144,14 @@ Purpose:
 - Confirm the user could still perform its intended job function.
 - Validate that least privilege preserved required access.
 
+Security meaning:
+
+The remediation did not break legitimate access. The user still had the minimum permissions needed for the assigned task.
+
 Evidence:
 
-- `../screenshots/s3-read-access-allowed-after-remediation.png`
-- `../screenshots/session3-s3-read-access-allowed.png`
+- [`s3-read-access-allowed-after-remediation.png`](../screenshots/s3-read-access-allowed-after-remediation.png)
+- [`session3-s3-read-access-allowed.png`](../screenshots/session3-s3-read-access-allowed.png)
 
 ### Download assigned object
 
@@ -122,10 +168,13 @@ Allowed
 Purpose:
 
 - Confirm `s3:GetObject` worked for objects inside the assigned bucket.
+- Validate that the custom read-only policy allowed intended object access.
 
-## 4. Denied S3 Actions After Remediation
+## 5. Denied S3 Actions After Remediation
 
-### List all buckets
+After confirming required access still worked, I tested S3 actions that should not be allowed for the user.
+
+### List all S3 buckets
 
 ```powershell
 aws s3 ls --profile lab4-junior-analyst
@@ -142,10 +191,14 @@ Purpose:
 - Confirm the user could no longer enumerate all S3 buckets in the account.
 - Reduce account-level reconnaissance risk.
 
+Security meaning:
+
+The user was restricted to the assigned bucket instead of having broad account-wide S3 visibility.
+
 Evidence:
 
-- `../screenshots/s3-list-all-buckets-denied-after-remediation.png`
-- `../screenshots/session3-s3-list-all-buckets-denied.png`
+- [`s3-list-all-buckets-denied-after-remediation.png`](../screenshots/s3-list-all-buckets-denied-after-remediation.png)
+- [`session3-s3-list-all-buckets-denied.png`](../screenshots/session3-s3-list-all-buckets-denied.png)
 
 ### Upload object
 
@@ -163,11 +216,16 @@ AccessDenied
 Purpose:
 
 - Confirm the user could not write new objects after remediation.
+- Validate that unnecessary write permissions were removed.
+
+Security meaning:
+
+The user could no longer modify bucket contents by uploading new objects.
 
 Evidence:
 
-- `../screenshots/s3-upload-denied-after-remediation.png`
-- `../screenshots/session3-s3-upload-denied.png`
+- [`s3-upload-denied-after-remediation.png`](../screenshots/s3-upload-denied-after-remediation.png)
+- [`session3-s3-upload-denied.png`](../screenshots/session3-s3-upload-denied.png)
 
 ### Delete object
 
@@ -184,14 +242,19 @@ AccessDenied
 Purpose:
 
 - Confirm the user could not perform destructive object actions.
+- Validate that delete access was not included in the scoped policy.
+
+Security meaning:
+
+The user could not delete objects from the bucket, reducing the risk of destructive misuse.
 
 Evidence:
 
-- `../screenshots/session3-s3-delete-denied.png`
+- [`session3-s3-delete-denied.png`](../screenshots/session3-s3-delete-denied.png)
 
 ### Modify bucket policy
 
-A local JSON file was created to simulate an attempted bucket policy change:
+A local JSON file was created to simulate an attempted bucket policy change.
 
 ```powershell
 @'
@@ -227,12 +290,18 @@ Purpose:
 - Confirm the user could not modify bucket-level access controls.
 - Prevent the user from weakening resource-based permissions.
 
+Security meaning:
+
+The user could not change the bucket policy to grant broader access or weaken the resource's security boundary.
+
 Evidence:
 
-- `../screenshots/session3-s3-put-bucket-policy-denied.png`
-- `../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png`
+- [`session3-s3-put-bucket-policy-denied.png`](../screenshots/session3-s3-put-bucket-policy-denied.png)
+- [`cloudtrail-s3-put-bucket-policy-access-denied.png`](../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png)
 
-## 5. Denied IAM Actions After Remediation
+## 6. Denied IAM Actions After Remediation
+
+The user also attempted IAM actions that could support reconnaissance, privilege escalation, or credential persistence.
 
 ### List IAM users
 
@@ -249,12 +318,16 @@ AccessDenied
 Purpose:
 
 - Confirm the user could not enumerate IAM identities.
+- Validate that the user had no unnecessary IAM visibility.
+
+Security meaning:
+
+The user could not list IAM users in the account, limiting identity reconnaissance.
 
 Evidence:
 
-- `../screenshots/iam-list-users-denied-after-remediation.png`
-- `../screenshots/session3-iam-list-users-denied.png`
-- `../screenshots/cloudtrail-iam-list-users-access-denied.png`
+- [`iam-list-users-denied-after-remediation.png`](../screenshots/iam-list-users-denied-after-remediation.png)
+- [`cloudtrail-iam-list-users-access-denied.png`](../screenshots/cloudtrail-iam-list-users-access-denied.png)
 
 ### Attach AdministratorAccess
 
@@ -273,10 +346,14 @@ Purpose:
 - Simulate a privilege escalation attempt.
 - Confirm the user could not attach administrator permissions to itself.
 
+Security meaning:
+
+The user could not escalate from a restricted identity to an administrator-level identity.
+
 Evidence:
 
-- `../screenshots/session3-iam-attach-admin-policy-denied.png`
-- `../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png`
+- [`session3-iam-attach-admin-policy-denied.png`](../screenshots/session3-iam-attach-admin-policy-denied.png)
+- [`cloudtrail-iam-attach-admin-policy-access-denied.png`](../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png)
 
 ### Create new access key
 
@@ -293,14 +370,18 @@ AccessDenied
 Purpose:
 
 - Simulate a credential persistence attempt.
-- Confirm the user could not create additional credentials for itself.
+- Confirm the user could not create additional long-lived credentials.
+
+Security meaning:
+
+The user could not create a new access key that could be used to maintain access.
 
 Evidence:
 
-- `../screenshots/session3-iam-create-access-key-denied.png`
-- `../screenshots/cloudtrail-iam-create-access-key-access-denied.png`
+- [`session3-iam-create-access-key-denied.png`](../screenshots/session3-iam-create-access-key-denied.png)
+- [`cloudtrail-iam-create-access-key-access-denied.png`](../screenshots/cloudtrail-iam-create-access-key-access-denied.png)
 
-## 6. CloudTrail Lookup
+## 7. CloudTrail Lookup and Audit Validation
 
 CloudTrail Event history was used to verify that AWS recorded the denied IAM and S3 actions.
 
@@ -312,27 +393,43 @@ aws cloudtrail lookup-events --lookup-attributes AttributeKey=Username,Attribute
 
 Purpose:
 
-- Validate that the activity was not only blocked in the CLI, but also recorded in AWS audit logs.
-- Confirm that denied actions produced CloudTrail evidence with event name, user identity, source IP address, event time, event source, and error code.
+- Validate that denied actions were not only blocked in the CLI, but also recorded in AWS audit logs.
+- Confirm that CloudTrail captured evidence of user activity and policy enforcement.
+
+CloudTrail evidence included:
+
+- Event name
+- User identity
+- Event source
+- Source IP address
+- Event time
+- Error code
 
 Evidence:
 
-- `../screenshots/cloudtrail-session4-user-filtered-events.png`
-- `../screenshots/cloudtrail-iam-list-users-access-denied.png`
-- `../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png`
-- `../screenshots/cloudtrail-iam-create-access-key-access-denied.png`
-- `../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png`
+- [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png)
+- [`cloudtrail-iam-list-users-access-denied.png`](../screenshots/cloudtrail-iam-list-users-access-denied.png)
+- [`cloudtrail-iam-attach-admin-policy-access-denied.png`](../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png)
+- [`cloudtrail-iam-create-access-key-access-denied.png`](../screenshots/cloudtrail-iam-create-access-key-access-denied.png)
+- [`cloudtrail-s3-put-bucket-policy-access-denied.png`](../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png)
 
-## Final Validation Summary
+## Final Validation Matrix
 
-| Test | Result After Remediation | Security Meaning |
-|---|---|---|
-| Read assigned S3 bucket | Allowed | Preserved required job access |
-| Download assigned object | Allowed | Confirmed intended read-only access |
-| List all S3 buckets | Denied | Reduced account-level reconnaissance |
-| Upload object | Denied | Prevented unauthorized writes |
-| Delete object | Denied | Prevented destructive object actions |
-| Modify bucket policy | Denied | Prevented weakening resource-based access controls |
-| List IAM users | Denied | Prevented IAM enumeration |
-| Attach AdministratorAccess | Denied | Prevented privilege escalation |
-| Create access key | Denied | Prevented credential persistence |
+| Test | Command Area | Result After Remediation | Security Meaning |
+|---|---|---:|---|
+| Verify identity | STS | Allowed | Confirmed correct IAM user was being tested |
+| List assigned S3 bucket | S3 | Allowed | Preserved required job access |
+| Download assigned object | S3 | Allowed | Confirmed intended read-only access |
+| List all S3 buckets | S3 | Denied | Reduced account-level reconnaissance |
+| Upload object | S3 | Denied | Prevented unauthorized writes |
+| Delete object | S3 | Denied | Prevented destructive object actions |
+| Modify bucket policy | S3 API | Denied | Prevented access-control weakening |
+| List IAM users | IAM | Denied | Prevented identity enumeration |
+| Attach `AdministratorAccess` | IAM | Denied | Prevented privilege escalation |
+| Create access key | IAM | Denied | Prevented credential persistence |
+
+## Key Takeaway
+
+The AWS CLI tests proved that the `lab4-junior-analyst` user could still perform its required read-only S3 task, but could not perform unnecessary S3 actions or risky IAM actions.
+
+This validated the least-privilege remediation with actual command output and CloudTrail audit evidence.
