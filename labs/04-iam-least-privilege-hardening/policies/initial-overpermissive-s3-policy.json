@@ -1,6 +1,12 @@
 {
-  "PolicyName": "AmazonS3FullAccess",
-  "PolicyType": "AWS Managed Policy",
-  "Purpose": "Initial intentionally over-permissioned policy used to demonstrate excessive S3 access before remediation.",
-  "Risk": "Allowed the lab4-junior-analyst user to perform broad S3 actions beyond the intended role. This created unnecessary access and increased the potential blast radius if the credentials were misused."
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "InitialOverpermissiveS3Access",
+      "Effect": "Allow",
+      "Action": "s3:*",
+      "Resource": "*"
+    }
+  ],
+  "LabNote": "This file represents the intentionally over-permissioned starting state used in the lab. In AWS, this was implemented by attaching the AWS managed AmazonS3FullAccess policy to the lab4-junior-analyst IAM user."
 }
