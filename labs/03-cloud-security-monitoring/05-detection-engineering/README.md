@@ -510,11 +510,11 @@ This makes the lab stronger than a basic single-source logging project.
 
 ### IAM Metric Filter Configuration
 
-![Metric filter configuration for AttachUserPolicy detection](../screenshots/metric-filter-attach-user-policy.png)
+![Metric filter configuration for AttachUserPolicy detection](../screenshots/metric-filter-attach-user-policy.png.png)
 
 ### IAM Custom Metric Validation
 
-![Custom CloudWatch metric showing AttachUserPolicy event detection](../screenshots/metric-attach-user-policy-datapoint.png)
+![Custom CloudWatch metric showing AttachUserPolicy event detection](../screenshots/metric-attach-user-policy-datapoint.png.png)
 
 ---
 
