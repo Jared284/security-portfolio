@@ -2,217 +2,295 @@
 
 ## Purpose
 
-This document tracks the working plan for the `cloud-security-monitoring` lab.
+This document tracks the planning, scope, progress, and final status of the AWS Cloud Security Monitoring Lab.
 
-The goal of this lab is to build a centralized cloud security monitoring project in AWS that demonstrates visibility across both:
+The goal of this lab was to build a centralized cloud security monitoring project in AWS that demonstrates visibility across:
 
-- host-level Linux authentication activity
-- AWS control-plane activity
+- Host-level Linux authentication activity
+- AWS network-control-plane activity
+- AWS identity-control-plane activity
 
-This file tracks progress, completed work, remaining polish, and future improvement ideas.
+This file documents the project scope, completed build work, validated detections, remaining documentation checks, and future improvement ideas.
+
+---
+
+## Lab Goal
+
+The goal of this project was to prove that security-relevant telemetry from multiple sources can be centralized, monitored, converted into detection signals, and escalated into alerts.
+
+The lab was designed to demonstrate the following workflow:
+
+```text
+Generate security-relevant activity
+        ↓
+Capture host or CloudTrail telemetry
+        ↓
+Centralize logs in CloudWatch Logs
+        ↓
+Create metric filters
+        ↓
+Generate custom CloudWatch metrics
+        ↓
+Trigger CloudWatch alarms
+        ↓
+Deliver SNS email notifications
+```
+
+---
 
 ## Lab Scope
 
-This project is designed to show that security-relevant telemetry from multiple sources can be centralized, monitored, and used for detection and alerting.
+This project focuses on AWS-native monitoring using CloudWatch, CloudTrail, EC2, and SNS.
 
-### Primary telemetry sources
+### Primary Telemetry Sources
 
-1. **Host-level authentication logs**
-   - EC2 Ubuntu instance
-   - `/var/log/auth.log`
-   - forwarded to CloudWatch Logs using the CloudWatch Agent
+| Telemetry Source | Collection Method | Purpose |
+|---|---|---|
+| EC2 Linux authentication logs | CloudWatch Agent forwarding `/var/log/auth.log` | Host-side SSH monitoring |
+| AWS CloudTrail events | CloudTrail delivery to S3 and CloudWatch Logs | AWS control-plane monitoring |
 
-2. **AWS control-plane activity**
-   - CloudTrail logs
-   - delivered to both S3 and CloudWatch Logs
-   - used to monitor AWS administrative activity, network-control-plane changes, and IAM permission changes
+### Security Areas Covered
+
+The lab covers three major areas of cloud security monitoring:
+
+1. **Host-level monitoring**
+   - Linux SSH authentication activity
+   - Invalid-user login attempts
+   - EC2 workload telemetry
+
+2. **Network-control-plane monitoring**
+   - AWS security group ingress rule additions
+   - AWS security group ingress rule removals
+   - CloudTrail-based network access change detection
+
+3. **Identity-control-plane monitoring**
+   - IAM managed policy attachment activity
+   - Permission expansion visibility
+   - CloudTrail-based IAM event detection
+
+---
 
 ## Current Status
 
-### Overall status
+### Overall Status
 
-The core lab build is complete.
+The core AWS build and validation work is complete.
 
 The lab now includes four validated detection and alerting paths:
 
-1. invalid-user SSH attempts from EC2 host logs
+1. Invalid-user SSH attempts from EC2 host logs
 2. `RevokeSecurityGroupIngress` CloudTrail events
 3. `AuthorizeSecurityGroupIngress` CloudTrail events
 4. `AttachUserPolicy` CloudTrail events
 
-Each path has been validated from event generation through CloudWatch metric creation, alarm triggering, and SNS email notification delivery.
+Each path has been validated from event generation through:
+
+- Log or CloudTrail event capture
+- CloudWatch Logs ingestion
+- Metric filter matching
+- Custom metric creation
+- CloudWatch alarm triggering
+- SNS email notification delivery
+
+---
 
 ## Host-Side Monitoring Path
 
 The host-side monitoring path is built and validated end to end.
 
-Completed:
+### Completed Work
 
-- EC2 Ubuntu monitoring host deployed
-- IAM role created and attached to the EC2 instance
-- `CloudWatchAgentServerPolicy` attached
-- CloudWatch Agent installed and configured
-- `/var/log/auth.log` forwarded into CloudWatch log group `cloud-security-monitoring-auth`
-- repeated fake SSH login attempts simulated from local workstation
-- `Invalid user` entries confirmed in local host logs
-- `Invalid user` entries confirmed in CloudWatch Logs
-- metric filter `invalid-user-ssh-attempts` created
-- custom metric `CloudSecurityMonitoring / InvalidUserSSHAttempts` validated
-- CloudWatch alarm `invalid-user-ssh-attempts-alarm` triggered successfully
-- SNS email alert delivery validated
+- Deployed EC2 Ubuntu monitoring host
+- Created and attached IAM role for CloudWatch Agent permissions
+- Attached `CloudWatchAgentServerPolicy`
+- Installed and configured the CloudWatch Agent
+- Forwarded `/var/log/auth.log` into CloudWatch Logs
+- Created CloudWatch log group `cloud-security-monitoring-auth`
+- Simulated repeated fake SSH login attempts from local workstation
+- Confirmed `Invalid user` entries in local host logs
+- Confirmed `Invalid user` entries in CloudWatch Logs
+- Created metric filter `invalid-user-ssh-attempts`
+- Created custom metric `CloudSecurityMonitoring / InvalidUserSSHAttempts`
+- Validated metric datapoints with `Sum` statistic
+- Created CloudWatch alarm `invalid-user-ssh-attempts-alarm`
+- Triggered alarm successfully
+- Validated SNS email alert delivery
+
+### Final Output
+
+The host-side path detects repeated invalid-user SSH activity and sends an alert when the configured threshold is exceeded.
+
+---
 
 ## CloudTrail-Side Monitoring Path
 
-The CloudTrail-side monitoring path is built and validated across network-control-plane and IAM-control-plane events.
+The CloudTrail-side monitoring path is built and validated across network-control-plane and identity-control-plane events.
 
-Completed:
+### Completed Work
 
-- S3 bucket created for CloudTrail storage
-- SNS topic created for alert delivery
-- CloudTrail trail `cloud-security-monitoring-trail` created
-- CloudTrail configured to deliver to S3
-- CloudTrail configured to deliver to CloudWatch Logs
-- CloudTrail telemetry validated in both S3 and CloudWatch
-- CloudTrail log group `cloud-security-monitoring-cloudtrail` identified and validated
-- controlled security group rule changes generated against the EC2 instance’s attached security group
-- CloudTrail event `RevokeSecurityGroupIngress` identified in Event history
-- CloudTrail event `AuthorizeSecurityGroupIngress` identified in Event history
-- IAM managed policy attachment generated against a test IAM user
-- CloudTrail event `AttachUserPolicy` identified in Event history
-- metric filter `revoke-security-group-ingress` created
-- metric filter `authorize-security-group-ingress` created
-- metric filter `attach-user-policy` created
-- custom metric `CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents` validated
-- custom metric `CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents` validated
-- custom metric `CloudSecurityMonitoring / AttachUserPolicyEvents` validated
-- CloudWatch alarm `revoke-security-group-ingress-alarm` triggered successfully
-- CloudWatch alarm `authorize-security-group-ingress-alarm` triggered successfully
-- CloudWatch alarm `attach-user-policy-alarm` triggered successfully
-- SNS email alert delivery validated for all CloudTrail-side detections
+- Created S3 bucket for CloudTrail log storage
+- Created SNS topic `cloud-security-monitoring-alerts`
+- Created CloudTrail trail `cloud-security-monitoring-trail`
+- Configured CloudTrail delivery to S3
+- Configured CloudTrail delivery to CloudWatch Logs
+- Created CloudWatch log group `cloud-security-monitoring-cloudtrail`
+- Validated CloudTrail telemetry in S3
+- Validated CloudTrail telemetry in CloudWatch Logs
+- Generated controlled security group rule changes
+- Identified `RevokeSecurityGroupIngress` in CloudTrail Event history
+- Identified `AuthorizeSecurityGroupIngress` in CloudTrail Event history
+- Generated controlled IAM managed policy attachment activity
+- Identified `AttachUserPolicy` in CloudTrail Event history
+- Created metric filter `revoke-security-group-ingress`
+- Created metric filter `authorize-security-group-ingress`
+- Created metric filter `attach-user-policy`
+- Created custom metric `CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents`
+- Created custom metric `CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents`
+- Created custom metric `CloudSecurityMonitoring / AttachUserPolicyEvents`
+- Created CloudWatch alarm `revoke-security-group-ingress-alarm`
+- Created CloudWatch alarm `authorize-security-group-ingress-alarm`
+- Created CloudWatch alarm `attach-user-policy-alarm`
+- Triggered all CloudTrail-side alarms successfully
+- Validated SNS email alert delivery for all CloudTrail-side detections
+
+### Final Output
+
+The CloudTrail-side path detects selected AWS administrative actions and sends alerts for security group changes and IAM managed policy attachment activity.
+
+---
 
 ## Completed Detections
 
-### 1. Invalid SSH User Attempts
+| # | Detection | Source | Metric Filter | Custom Metric | Alarm |
+|---|---|---|---|---|---|
+| 1 | Invalid SSH user attempts | EC2 `/var/log/auth.log` | `invalid-user-ssh-attempts` | `InvalidUserSSHAttempts` | `invalid-user-ssh-attempts-alarm` |
+| 2 | Security group ingress rule removal | CloudTrail `RevokeSecurityGroupIngress` | `revoke-security-group-ingress` | `RevokeSecurityGroupIngressEvents` | `revoke-security-group-ingress-alarm` |
+| 3 | Security group ingress rule addition | CloudTrail `AuthorizeSecurityGroupIngress` | `authorize-security-group-ingress` | `AuthorizeSecurityGroupIngressEvents` | `authorize-security-group-ingress-alarm` |
+| 4 | IAM managed policy attachment | CloudTrail `AttachUserPolicy` | `attach-user-policy` | `AttachUserPolicyEvents` | `attach-user-policy-alarm` |
 
-- **Source:** EC2 `/var/log/auth.log`
-- **Metric filter:** `invalid-user-ssh-attempts`
-- **Metric:** `CloudSecurityMonitoring / InvalidUserSSHAttempts`
-- **Alarm:** `invalid-user-ssh-attempts-alarm`
-- **Purpose:** Detects repeated invalid-user SSH login attempts that may indicate username enumeration or brute-force activity.
+All custom metrics use the namespace:
 
-### 2. Security Group Ingress Rule Removal
+```text
+CloudSecurityMonitoring
+```
 
-- **Source:** CloudTrail
-- **Event name:** `RevokeSecurityGroupIngress`
-- **Metric filter:** `revoke-security-group-ingress`
-- **Metric:** `CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents`
-- **Alarm:** `revoke-security-group-ingress-alarm`
-- **Purpose:** Detects security group ingress rule removal, which may indicate a meaningful network access control change.
-
-### 3. Security Group Ingress Rule Addition
-
-- **Source:** CloudTrail
-- **Event name:** `AuthorizeSecurityGroupIngress`
-- **Metric filter:** `authorize-security-group-ingress`
-- **Metric:** `CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents`
-- **Alarm:** `authorize-security-group-ingress-alarm`
-- **Purpose:** Detects security group ingress rule additions, which may indicate new network exposure.
-
-### 4. IAM Managed Policy Attachment
-
-- **Source:** CloudTrail
-- **Event name:** `AttachUserPolicy`
-- **Metric filter:** `attach-user-policy`
-- **Metric:** `CloudSecurityMonitoring / AttachUserPolicyEvents`
-- **Alarm:** `attach-user-policy-alarm`
-- **Purpose:** Detects IAM managed policies being attached directly to users, which may indicate privilege expansion or unauthorized permission changes.
+---
 
 ## Completed Documentation
 
-The following sections are drafted or updated to reflect the completed host-side and CloudTrail-side work:
+The following documentation sections have been drafted and polished:
 
-- root `README.md`
+- Root `README.md`
+- `01-architecture/README.md`
+- `02-setup-and-build/README.md`
 - `03-log-sources-and-ingestion/README.md`
 - `04-attack-simulation/README.md`
 - `05-detection-engineering/README.md`
 - `06-alerting-and-response/README.md`
 - `07-reflections-and-improvements/README.md`
 
-The remaining documentation work is polish and consistency, not new AWS implementation.
+---
 
 ## Remaining Work
 
-The main remaining work is documentation cleanup.
+The main remaining work is final documentation and repository cleanup, not additional AWS implementation.
 
-### Documentation cleanup checklist
+### Final Cleanup Checklist
 
-- confirm screenshot filenames match the names referenced in Markdown
-- confirm every screenshot path renders correctly in GitHub
-- remove duplicate or outdated screenshots
-- make sure IAM detection is reflected consistently across the root README and section READMEs
-- make sure the documentation does not still describe IAM detection as future work
-- make sure “three alarms” has been updated to “four alarms” where relevant
-- make sure “three detections” has been updated to “four detections” where relevant
-- perform a final read-through for clarity, broken links, and unnecessary repetition
+- Confirm every screenshot path renders correctly in GitHub
+- Confirm screenshot filenames match Markdown references
+- Confirm there are no broken image links
+- Remove duplicate or outdated screenshots if needed
+- Confirm IAM detection is reflected consistently across all documentation
+- Confirm all references say “four detections” where appropriate
+- Confirm all references say “four alarms” where appropriate
+- Confirm the main README matches the final lab structure
+- Confirm `planning.md` reflects the final status of the project
+- Perform final read-through for clarity and repetition
+- Make sure no sensitive information is exposed in screenshots or text
+
+---
 
 ## Future Improvements
 
-The core lab is complete. Future work would expand detection depth or improve analysis quality.
+The core lab is complete. Future work would expand detection coverage, improve analysis quality, or make the lab closer to a production-style detection engineering workflow.
 
-### Strong future detection candidates
+### Strong Future Detection Candidates
 
 CloudTrail-side candidates:
 
-- failed AWS console login activity
+- Failed AWS console login activity
 - `CreateAccessKey` events
 - `PutUserPolicy` events
 - `AttachRolePolicy` events
 - CloudTrail modification or disablement attempts
-- suspicious administrative API activity
+- Root account activity
+- Suspicious administrative API activity
+- Unauthorized region activity
 
 Host-side candidates:
 
-- repeated failed password attempts for valid users
-- successful SSH login detection
-- anomalous sudo activity
-- privilege escalation related log events
+- Repeated failed password attempts for valid users
+- Successful SSH login detection
+- Anomalous sudo activity
+- Privilege escalation related log events
+- New user creation on the host
+- Changes to SSH configuration files
 
-### Optional advanced improvements
+---
 
-- add a cleaner architecture diagram
-- add an analyst triage playbook for each alert
-- add severity labels for detections
-- add MITRE ATT&CK mappings where appropriate
-- improve correlation between host telemetry and AWS control-plane telemetry
-- add automated response or remediation for selected alert types
+## Advanced Improvement Ideas
 
-## Current Priority
+Optional advanced improvements include:
 
-**Current phase:** Final documentation polish.
+- Add a cleaner architecture diagram
+- Add analyst triage playbooks for each alert
+- Add severity labels for detections
+- Add MITRE ATT&CK mappings where appropriate
+- Improve correlation between host telemetry and AWS control-plane telemetry
+- Add automated response or remediation for selected alert types
+- Integrate logs with a SIEM such as Splunk, Elastic, or Microsoft Sentinel
+- Convert the lab build into Infrastructure as Code using Terraform or CloudFormation
 
-The AWS build and validation work is complete. The priority now is to make the GitHub documentation clean, consistent, and easy to defend in an interview.
+---
 
-## Open Notes
+## Notes and Lessons Learned
+
+Important lessons from the project:
 
 - The original Gmail-based SNS subscription path repeatedly deactivated after confirmation.
 - This appeared to be an email endpoint or link-handling issue rather than an AWS alarm issue.
 - End-to-end SNS delivery was successfully validated after switching to a different email endpoint.
-- CloudTrail Event history was more reliable than CloudWatch log searching for quickly confirming the exact control-plane event name during detection engineering.
-- Attempting to build failed AWS console login detection provided useful insight into sign-in event structure, but it was not the best implementation target for this phase compared with security group and IAM control-plane detections.
-- CloudWatch metric graphs should generally be viewed with `Sum` as the statistic when validating event-count metrics.
-- Screenshot organization should be checked before the lab is considered fully shipped.
+- CloudTrail Event history was more reliable than CloudWatch log searching for quickly confirming exact control-plane event names.
+- Failed AWS console login detection was considered, but it was not the cleanest implementation target for this phase.
+- Security group changes and IAM policy attachment produced clearer, more defensible detection paths.
+- CloudWatch metric graphs should generally be viewed with the `Sum` statistic when validating event-count metrics.
+- Screenshot organization and image rendering should be checked before the lab is considered fully shipped.
+
+---
 
 ## Final Goal
 
-By the end of the lab, this project should clearly demonstrate:
+The final version of this project should clearly demonstrate:
 
-- centralized monitoring across multiple AWS-relevant telemetry sources
-- host-based detection engineering
-- cloud control-plane detection engineering
+- Centralized monitoring across multiple AWS-relevant telemetry sources
+- Host-based detection engineering
+- Cloud control-plane detection engineering
 - IAM control-plane detection engineering
 - CloudWatch metric-filter-based detection
-- CloudWatch-based alerting
+- CloudWatch alarm configuration
 - SNS-based notification delivery
-- clear documentation and evidence for each stage
+- Troubleshooting of alert delivery paths
+- Clear documentation and screenshot evidence for each stage
 
 The final version should be strong enough to discuss in interviews as a real cloud security monitoring project rather than a basic AWS setup exercise.
+
+---
+
+## Final Status
+
+The AWS build and validation work is complete.
+
+The project is now in final documentation polish mode.
+
+The remaining priority is to make the GitHub documentation clean, consistent, and easy to defend in an interview.
