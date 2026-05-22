@@ -70,7 +70,7 @@ Using one namespace kept the lab’s detection metrics organized and easy to rev
 
 ## Detection 1: Invalid SSH User Attempts
 
-## Detection Goal
+### Detection Goal
 
 This detection identifies repeated invalid-user SSH login attempts against the EC2 monitoring host.
 
@@ -78,7 +78,7 @@ The goal was to detect suspicious authentication activity at the host level usin
 
 ---
 
-## Telemetry Source
+### Telemetry Source
 
 The telemetry source for this detection was:
 
@@ -96,7 +96,7 @@ cloud-security-monitoring-auth
 
 ---
 
-## Event Pattern
+### Event Pattern
 
 The detection focused on the following log pattern:
 
@@ -115,7 +115,7 @@ Invalid user svc-test from 128.6.147.103
 
 ---
 
-## Metric Filter Configuration
+### Metric Filter Configuration
 
 ```text
 Filter name: invalid-user-ssh-attempts
@@ -129,7 +129,7 @@ Every matching `Invalid user` log entry increments the custom metric by `1`.
 
 ---
 
-## Validation
+### Validation
 
 I validated this detection by generating repeated fake SSH login attempts against the EC2 instance.
 
@@ -145,7 +145,7 @@ During validation, the metric showed a `Sum` of `5`, confirming that the simulat
 
 ---
 
-## Detection Output
+### Detection Output
 
 ```text
 CloudSecurityMonitoring / InvalidUserSSHAttempts
@@ -157,7 +157,7 @@ This metric became the basis for the host-side CloudWatch alarm configured in th
 
 ## Detection 2: Security Group Ingress Rule Removal
 
-## Detection Goal
+### Detection Goal
 
 This detection identifies when an ingress rule is removed from an AWS security group.
 
@@ -165,7 +165,7 @@ The goal was to monitor network-control-plane changes that modify cloud resource
 
 ---
 
-## Telemetry Source
+### Telemetry Source
 
 The telemetry source for this detection was AWS CloudTrail.
 
@@ -177,7 +177,7 @@ cloud-security-monitoring-cloudtrail
 
 ---
 
-## Event Pattern
+### Event Pattern
 
 The detection focused on the following CloudTrail event:
 
@@ -193,7 +193,7 @@ ec2.amazonaws.com
 
 ---
 
-## Metric Filter Configuration
+### Metric Filter Configuration
 
 ```text
 Filter name: revoke-security-group-ingress
@@ -207,7 +207,7 @@ Every matching `RevokeSecurityGroupIngress` CloudTrail event increments the cust
 
 ---
 
-## Why This Detection Matters
+### Why This Detection Matters
 
 Security group ingress rules define what traffic can reach cloud resources.
 
@@ -217,7 +217,7 @@ This detection proves that AWS administrative activity can be converted into a m
 
 ---
 
-## Validation
+### Validation
 
 I validated this detection by removing an ingress rule from the EC2 instance’s attached security group.
 
@@ -233,7 +233,7 @@ During validation, the metric showed a datapoint of `1`.
 
 ---
 
-## Detection Output
+### Detection Output
 
 ```text
 CloudSecurityMonitoring / RevokeSecurityGroupIngressEvents
@@ -245,7 +245,7 @@ This metric became the basis for a CloudTrail-side CloudWatch alarm.
 
 ## Detection 3: Security Group Ingress Rule Addition
 
-## Detection Goal
+### Detection Goal
 
 This detection identifies when an ingress rule is added to an AWS security group.
 
@@ -253,7 +253,7 @@ The goal was to monitor changes that may increase the exposure of a cloud resour
 
 ---
 
-## Telemetry Source
+### Telemetry Source
 
 The telemetry source for this detection was AWS CloudTrail.
 
@@ -265,7 +265,7 @@ cloud-security-monitoring-cloudtrail
 
 ---
 
-## Event Pattern
+### Event Pattern
 
 The detection focused on the following CloudTrail event:
 
@@ -281,7 +281,7 @@ ec2.amazonaws.com
 
 ---
 
-## Metric Filter Configuration
+### Metric Filter Configuration
 
 ```text
 Filter name: authorize-security-group-ingress
@@ -295,7 +295,7 @@ Every matching `AuthorizeSecurityGroupIngress` CloudTrail event increments the c
 
 ---
 
-## Why This Detection Matters
+### Why This Detection Matters
 
 Security group ingress additions can increase the attack surface of a cloud resource.
 
@@ -308,7 +308,7 @@ This detection complements the ingress rule removal detection by monitoring both
 
 ---
 
-## Validation
+### Validation
 
 I validated this detection by adding a controlled temporary ingress rule to the EC2 instance’s attached security group.
 
@@ -324,7 +324,7 @@ During validation, the metric showed a datapoint of `1`.
 
 ---
 
-## Detection Output
+### Detection Output
 
 ```text
 CloudSecurityMonitoring / AuthorizeSecurityGroupIngressEvents
@@ -336,7 +336,7 @@ This metric became the basis for a CloudTrail-side CloudWatch alarm.
 
 ## Detection 4: IAM Managed Policy Attachment
 
-## Detection Goal
+### Detection Goal
 
 This detection identifies when an IAM managed policy is attached directly to a user.
 
@@ -344,7 +344,7 @@ The goal was to monitor identity-control-plane activity that may indicate permis
 
 ---
 
-## Telemetry Source
+### Telemetry Source
 
 The telemetry source for this detection was AWS CloudTrail.
 
@@ -356,7 +356,7 @@ cloud-security-monitoring-cloudtrail
 
 ---
 
-## Event Pattern
+### Event Pattern
 
 The detection focused on the following CloudTrail event:
 
@@ -372,7 +372,7 @@ iam.amazonaws.com
 
 ---
 
-## Metric Filter Configuration
+### Metric Filter Configuration
 
 ```text
 Filter name: attach-user-policy
@@ -386,7 +386,7 @@ Every matching `AttachUserPolicy` CloudTrail event increments the custom metric 
 
 ---
 
-## Why This Detection Matters
+### Why This Detection Matters
 
 IAM policy attachment can expand the permissions available to an identity.
 
@@ -401,7 +401,7 @@ The validation used the lower-risk `IAMReadOnlyAccess` policy, but the same dete
 
 ---
 
-## Validation
+### Validation
 
 I validated this detection by attaching the AWS managed `IAMReadOnlyAccess` policy directly to a test IAM user.
 
@@ -424,7 +424,7 @@ During validation, the metric showed a datapoint of `1`.
 
 ---
 
-## Detection Output
+### Detection Output
 
 ```text
 CloudSecurityMonitoring / AttachUserPolicyEvents
@@ -510,11 +510,11 @@ This makes the lab stronger than a basic single-source logging project.
 
 ### IAM Metric Filter Configuration
 
-![Metric filter configuration for AttachUserPolicy detection](../screenshots/metric-filter-attach-user-policy.png.png)
+![Metric filter configuration for AttachUserPolicy detection](../screenshots/metric-filter-attach-user-policy.png)
 
 ### IAM Custom Metric Validation
 
-![Custom CloudWatch metric showing AttachUserPolicy event detection](../screenshots/metric-attach-user-policy-datapoint.png.png)
+![Custom CloudWatch metric showing AttachUserPolicy event detection](../screenshots/metric-attach-user-policy-datapoint.png)
 
 ---
 
