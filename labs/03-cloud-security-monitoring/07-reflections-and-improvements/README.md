@@ -50,7 +50,7 @@ This makes the lab more credible because it proves the detections were not just 
 
 ## Completed Monitoring Paths
 
-## 1. Host-Side Signal Path
+### 1. Host-Side Signal Path
 
 The host-side path demonstrates:
 
@@ -65,7 +65,7 @@ This is valuable because it shows how host-level authentication telemetry can be
 
 ---
 
-## 2. CloudTrail Signal Path: Ingress Rule Removal
+### 2. CloudTrail Signal Path: Ingress Rule Removal
 
 The first cloud-side path demonstrates:
 
@@ -80,7 +80,7 @@ This is valuable because it shows that the lab can monitor AWS administrative ac
 
 ---
 
-## 3. CloudTrail Signal Path: Ingress Rule Addition
+### 3. CloudTrail Signal Path: Ingress Rule Addition
 
 The second cloud-side path demonstrates:
 
@@ -95,7 +95,7 @@ This is valuable because it shows that the lab can monitor when network exposure
 
 ---
 
-## 4. CloudTrail Signal Path: IAM Managed Policy Attachment
+### 4. CloudTrail Signal Path: IAM Managed Policy Attachment
 
 The IAM path demonstrates:
 
