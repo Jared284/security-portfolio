@@ -1,14 +1,56 @@
-# Reflections and Improvements
+# 06 - Reflections and Improvements
 
 ## Purpose
 
-This section summarizes what I learned from the AWS IAM least-privilege hardening lab and how the design could be improved in a real AWS environment.
+This section summarizes what I learned from the AWS IAM Least Privilege and Access Control Hardening Lab and how the design could be improved in a real AWS environment.
 
 The lab focused on one core security idea:
 
 ```text
 Least privilege should be tested, not assumed.
 ```
+
+The goal was to show that IAM hardening is stronger when it is validated with real access testing and audit evidence.
+
+---
+
+## Lab Summary
+
+The lab followed this workflow:
+
+```text
+Create IAM user
+        ↓
+Attach broad S3 permissions
+        ↓
+Validate excessive access
+        ↓
+Replace broad access with least privilege
+        ↓
+Test allowed actions
+        ↓
+Test denied actions
+        ↓
+Review CloudTrail evidence
+        ↓
+Document hardening recommendations
+```
+
+The test identity was:
+
+```text
+lab4-junior-analyst
+```
+
+The assigned resource was:
+
+```text
+jw-lab4-iam-test-bucket-2026
+```
+
+The final result was a user that could read from one assigned S3 bucket, but could not perform unnecessary S3 or IAM actions.
+
+---
 
 ## What I Learned
 
@@ -31,34 +73,7 @@ This made the remediation more defensible because the final result was proven wi
 - CloudTrail audit evidence
 - Screenshot documentation
 
-## Lab Summary
-
-The lab followed this workflow:
-
-```text
-Create IAM user
-→ attach broad S3 permissions
-→ validate excessive access
-→ replace broad access with least privilege
-→ test allowed actions
-→ test denied actions
-→ review CloudTrail evidence
-→ document hardening recommendations
-```
-
-The test identity was:
-
-```text
-lab4-junior-analyst
-```
-
-The assigned resource was:
-
-```text
-jw-lab4-iam-test-bucket-2026
-```
-
-The final result was a user that could read from one assigned S3 bucket, but could not perform unnecessary S3 or IAM actions.
+---
 
 ## Why Over-Permissioned Identities Are Dangerous
 
@@ -74,10 +89,12 @@ A user with broader permissions creates a larger blast radius.
 
 In this lab, broad S3 access meant the user could initially perform actions beyond the intended read-only role, including listing S3 buckets and uploading objects.
 
-Evidence:
+### Evidence
 
 - [`s3-access-allowed-before-remediation.png`](../screenshots/s3-access-allowed-before-remediation.png)
 - [`s3-object-upload-allowed-before-remediation.png`](../screenshots/s3-object-upload-allowed-before-remediation.png)
+
+---
 
 ## Why Least Privilege Matters
 
@@ -106,19 +123,19 @@ It did not allow:
 
 The key lesson is that a least-privilege policy should preserve legitimate access while removing unnecessary access.
 
-Evidence:
+### Evidence
 
 - [`least-privilege-policy-created.png`](../screenshots/least-privilege-policy-created.png)
 - [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png)
 - [`s3-read-access-allowed-after-remediation.png`](../screenshots/s3-read-access-allowed-after-remediation.png)
+
+---
 
 ## Why Denied-Action Testing Matters
 
 A policy is only useful if it behaves correctly when tested.
 
 This lab did not stop after attaching the least-privilege policy. I tested actions that should have been denied.
-
-Denied tests included:
 
 | Action | Security Meaning |
 |---|---|
@@ -132,7 +149,7 @@ Denied tests included:
 
 This testing proved that the policy was not only smaller, but actually effective.
 
-Evidence:
+### Evidence
 
 - [`s3-list-all-buckets-denied-after-remediation.png`](../screenshots/s3-list-all-buckets-denied-after-remediation.png)
 - [`s3-upload-denied-after-remediation.png`](../screenshots/s3-upload-denied-after-remediation.png)
@@ -141,6 +158,8 @@ Evidence:
 - [`iam-list-users-denied-after-remediation.png`](../screenshots/iam-list-users-denied-after-remediation.png)
 - [`session3-iam-attach-admin-policy-denied.png`](../screenshots/session3-iam-attach-admin-policy-denied.png)
 - [`session3-iam-create-access-key-denied.png`](../screenshots/session3-iam-create-access-key-denied.png)
+
+---
 
 ## Why CloudTrail Matters
 
@@ -167,13 +186,15 @@ CloudTrail helps answer questions like:
 - Where did the request come from?
 - Was it allowed or denied?
 
-Evidence:
+### Evidence
 
 - [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png)
 - [`cloudtrail-iam-list-users-access-denied.png`](../screenshots/cloudtrail-iam-list-users-access-denied.png)
 - [`cloudtrail-iam-attach-admin-policy-access-denied.png`](../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png)
 - [`cloudtrail-iam-create-access-key-access-denied.png`](../screenshots/cloudtrail-iam-create-access-key-access-denied.png)
 - [`cloudtrail-s3-put-bucket-policy-access-denied.png`](../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png)
+
+---
 
 ## Skills Practiced
 
@@ -190,6 +211,8 @@ This lab reinforced several practical cloud security skills:
 - Security documentation
 - Before-and-after remediation validation
 
+---
+
 ## What Went Well
 
 The strongest part of this lab was the full validation workflow.
@@ -198,18 +221,36 @@ The lab did not only show a policy change. It showed:
 
 ```text
 Before state
-→ risk identified
-→ remediation applied
-→ required access preserved
-→ risky access denied
-→ CloudTrail evidence collected
+        ↓
+Risk identified
+        ↓
+Remediation applied
+        ↓
+Required access preserved
+        ↓
+Risky access denied
+        ↓
+CloudTrail evidence collected
 ```
 
 This made the project stronger because every major claim was backed by evidence.
 
+The lab is also easy to explain in an interview because the security story is clear:
+
+```text
+This user had too much access.
+I proved the access was too broad.
+I replaced it with least privilege.
+I proved the user could still do the required task.
+I proved the risky actions were denied.
+I verified denied activity in CloudTrail.
+```
+
+---
+
 ## What I Would Improve in a Real Environment
 
-### Use IAM roles instead of long-lived IAM user credentials
+### Use IAM Roles Instead of Long-Lived IAM User Credentials
 
 In production, I would avoid long-lived IAM user access keys when possible.
 
@@ -217,7 +258,9 @@ A better design would use IAM roles and temporary credentials, especially for wo
 
 Temporary credentials reduce the risk of long-term access key exposure.
 
-### Use IAM groups, roles, or identity federation
+---
+
+### Use IAM Groups, Roles, or Identity Federation
 
 Instead of attaching policies directly to one user, I would manage access through IAM groups, roles, or identity federation.
 
@@ -225,7 +268,9 @@ This scales better and makes permission management cleaner.
 
 For a real organization, direct user policy attachments can become hard to audit and maintain over time.
 
-### Require MFA for sensitive operations
+---
+
+### Require MFA for Sensitive Operations
 
 Sensitive actions should require stronger authentication controls.
 
@@ -238,7 +283,9 @@ Examples include:
 
 MFA adds an extra layer of protection if credentials are compromised.
 
-### Monitor IAM and S3 changes with alerts
+---
+
+### Monitor IAM and S3 Changes With Alerts
 
 CloudTrail recorded the denied activity, but a production environment should also generate alerts for high-risk events.
 
@@ -259,7 +306,9 @@ These events could be routed through:
 - Security Hub
 - A SIEM
 
-### Enable S3 data events where needed
+---
+
+### Enable S3 Data Events Where Needed
 
 CloudTrail management events captured IAM and bucket-policy activity.
 
@@ -271,13 +320,17 @@ In a production environment, S3 data events could also be enabled for sensitive 
 
 This would provide deeper visibility into object-level access.
 
+---
+
 ### Use IAM Access Analyzer
 
 IAM Access Analyzer could help identify policies that grant broad or unintended access.
 
 This would be useful for continuously reviewing whether identities have permissions beyond their intended role.
 
-### Apply permission boundaries
+---
+
+### Apply Permission Boundaries
 
 Permission boundaries can limit the maximum permissions an identity can receive.
 
@@ -285,7 +338,9 @@ This would add another layer of protection against accidental or unauthorized pr
 
 For example, even if someone tried to attach a broader policy, the permission boundary could prevent the identity from exceeding its approved access level.
 
-### Rotate or remove unused access keys
+---
+
+### Rotate or Remove Unused Access Keys
 
 Access keys should be reviewed regularly.
 
@@ -293,7 +348,9 @@ Unused keys should be removed, and active keys should be rotated according to or
 
 In production, I would also monitor for access keys that have not been used recently.
 
-### Add automated remediation
+---
+
+### Add Automated Remediation
 
 A more advanced version of this lab could include automated response.
 
@@ -301,12 +358,17 @@ For example:
 
 ```text
 CloudTrail event
-→ EventBridge rule
-→ Lambda function
-→ alert or disable risky access
+        ↓
+EventBridge rule
+        ↓
+Lambda function
+        ↓
+Alert or disable risky access
 ```
 
 This would turn the lab from manual validation into a stronger detection-and-response workflow.
+
+---
 
 ## Future Lab Improvements
 
@@ -321,17 +383,24 @@ If I expanded this project, I would add:
 - A cleanup script to remove lab resources safely
 - A diagram showing before-and-after IAM permissions
 
+---
+
 ## Final Reflection
 
 This lab showed a complete IAM hardening workflow:
 
 ```text
 Over-permissioned identity
-→ risky access validated
-→ least-privilege policy applied
-→ allowed and denied actions tested
-→ CloudTrail evidence reviewed
-→ hardening recommendations documented
+        ↓
+Risky access validated
+        ↓
+Least-privilege policy applied
+        ↓
+Allowed and denied actions tested
+        ↓
+CloudTrail evidence reviewed
+        ↓
+Hardening recommendations documented
 ```
 
 The main takeaway is that least privilege is not just about writing a smaller policy.
