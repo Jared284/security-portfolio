@@ -1,12 +1,14 @@
-# Setup and Build
+# 02 - Setup and Build
 
 ## Purpose
 
-This section documents the AWS environment setup for the IAM least-privilege hardening lab.
+This section documents the AWS environment setup for the IAM Least Privilege and Access Control Hardening Lab.
 
 The setup phase created the test IAM user, assigned S3 bucket, baseline over-permissioned access, AWS CLI profile, least-privilege replacement policy, and CloudTrail audit foundation needed to validate the remediation.
 
 The goal was to build a controlled AWS environment where permissions could be tested before and after least-privilege hardening.
+
+---
 
 ## Build Summary
 
@@ -19,30 +21,29 @@ Audit Layer: AWS CloudTrail
 Testing Method: AWS CLI
 ```
 
+---
+
 ## Environment Design
 
 The lab was designed around one restricted test identity and one assigned S3 resource.
 
 ```text
 lab4-junior-analyst
-        |
-        v
+        ↓
 Initial broad S3 policy
-        |
-        v
-S3 access testing through AWS CLI
-        |
-        v
+        ↓
+Baseline S3 access testing through AWS CLI
+        ↓
 Least-privilege policy remediation
-        |
-        v
+        ↓
 Allowed and denied action validation
-        |
-        v
+        ↓
 CloudTrail audit review
 ```
 
 This setup made it possible to prove the difference between broad access and scoped access through actual AWS CLI testing.
+
+---
 
 ## Step 1: Create the S3 Lab Bucket
 
@@ -56,9 +57,11 @@ This bucket acted as the assigned resource for the `lab4-junior-analyst` user.
 
 Using a dedicated bucket kept the lab controlled and prevented testing from affecting unrelated AWS resources.
 
-Evidence:
+### Evidence
 
 - [`s3-lab-bucket-created.png`](../screenshots/s3-lab-bucket-created.png)
+
+---
 
 ## Step 2: Upload a Test Object
 
@@ -78,9 +81,11 @@ This is a harmless test file for Lab 4 IAM least-privilege access testing.
 
 This object was used to test whether the IAM user could read from the assigned bucket after least-privilege remediation.
 
-Evidence:
+### Evidence
 
 - [`s3-test-object-uploaded.png`](../screenshots/s3-test-object-uploaded.png)
+
+---
 
 ## Step 3: Create the Test IAM User
 
@@ -92,11 +97,13 @@ lab4-junior-analyst
 
 This user represented a junior analyst identity that should only need read access to one assigned S3 bucket.
 
-Using a separate test identity was important because permissions needed to be tested from the restricted user's perspective, not from an administrator account.
+Using a separate test identity was important because permissions needed to be tested from the restricted user’s perspective, not from an administrator account.
 
-Evidence:
+### Evidence
 
 - [`iam-user-lab4-junior-analyst-created.png`](../screenshots/iam-user-lab4-junior-analyst-created.png)
+
+---
 
 ## Step 4: Attach the Initial Over-Permissioned Policy
 
@@ -112,9 +119,11 @@ The purpose was to simulate a common IAM misconfiguration where a user receives 
 
 The intended role only required read access to one assigned bucket, but `AmazonS3FullAccess` allowed broad S3 actions across the account.
 
-Evidence:
+### Evidence
 
 - [`initial-overpermissive-policy-attached.png`](../screenshots/initial-overpermissive-policy-attached.png)
+
+---
 
 ## Step 5: Configure the AWS CLI Profile
 
@@ -130,7 +139,9 @@ All access tests were run with:
 --profile lab4-junior-analyst
 ```
 
-This ensured that the commands were executed from the perspective of the restricted IAM user.
+This ensured that commands were executed from the perspective of the restricted IAM user.
+
+---
 
 ## Step 6: Verify CLI Identity
 
@@ -148,15 +159,17 @@ arn:aws:iam::211125298316:user/lab4-junior-analyst
 
 This confirmed that the AWS CLI was using the intended IAM user and not an administrator account.
 
-Evidence:
+### Evidence
 
 - [`aws-cli-get-caller-identity.png`](../screenshots/aws-cli-get-caller-identity.png)
+
+---
 
 ## Step 7: Validate Baseline Access Before Remediation
 
 Before remediation, the user was tested with the broad `AmazonS3FullAccess` policy attached.
 
-### List S3 buckets
+### Test 1: List S3 Buckets
 
 ```powershell
 aws s3 ls --profile lab4-junior-analyst
@@ -176,7 +189,9 @@ Evidence:
 
 - [`s3-access-allowed-before-remediation.png`](../screenshots/s3-access-allowed-before-remediation.png)
 
-### Upload an object
+---
+
+### Test 2: Upload an Object
 
 ```powershell
 aws s3 cp lab4-test-file.txt s3://jw-lab4-iam-test-bucket-2026/ --profile lab4-junior-analyst
@@ -196,6 +211,8 @@ Evidence:
 
 - [`s3-object-upload-allowed-before-remediation.png`](../screenshots/s3-object-upload-allowed-before-remediation.png)
 
+---
+
 ## Step 8: Create the Least-Privilege Policy
 
 A custom least-privilege policy was created to replace the broad managed policy.
@@ -209,9 +226,11 @@ Policy file:
 
 - [`least-privilege-s3-read-policy.json`](../policies/least-privilege-s3-read-policy.json)
 
-Evidence:
+### Evidence
 
 - [`least-privilege-policy-created.png`](../screenshots/least-privilege-policy-created.png)
+
+---
 
 ## Step 9: Attach the Least-Privilege Policy
 
@@ -219,9 +238,11 @@ The custom least-privilege policy was attached to the `lab4-junior-analyst` user
 
 The broad `AmazonS3FullAccess` policy was removed so the user would only retain the scoped read-only permissions required for the role.
 
-Evidence:
+### Evidence
 
 - [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png)
+
+---
 
 ## Step 10: Confirm Required Access Still Worked
 
@@ -241,15 +262,17 @@ Allowed
 
 Security meaning:
 
-The least-privilege policy preserved the user's required job function.
+The least-privilege policy preserved the user’s required job function.
 
-Evidence:
+### Evidence
 
 - [`s3-read-access-allowed-after-remediation.png`](../screenshots/s3-read-access-allowed-after-remediation.png)
 
+---
+
 ## Step 11: Confirm Unnecessary Access Was Denied
 
-After remediation, actions outside the user's intended role were denied.
+After remediation, actions outside the user’s intended role were denied.
 
 Denied S3 actions included:
 
@@ -264,7 +287,7 @@ Denied IAM actions included:
 - Attaching `AdministratorAccess`
 - Creating a new access key
 
-Evidence:
+### Evidence
 
 - [`s3-list-all-buckets-denied-after-remediation.png`](../screenshots/s3-list-all-buckets-denied-after-remediation.png)
 - [`s3-upload-denied-after-remediation.png`](../screenshots/s3-upload-denied-after-remediation.png)
@@ -273,6 +296,8 @@ Evidence:
 - [`session3-s3-put-bucket-policy-denied.png`](../screenshots/session3-s3-put-bucket-policy-denied.png)
 - [`session3-iam-attach-admin-policy-denied.png`](../screenshots/session3-iam-attach-admin-policy-denied.png)
 - [`session3-iam-create-access-key-denied.png`](../screenshots/session3-iam-create-access-key-denied.png)
+
+---
 
 ## Step 12: Verify CloudTrail Audit Evidence
 
@@ -287,13 +312,15 @@ CloudTrail provided audit evidence for events such as:
 
 These events showed that the actions were attempted by the `lab4-junior-analyst` user and denied by AWS policy enforcement.
 
-Evidence:
+### Evidence
 
 - [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png)
 - [`cloudtrail-iam-list-users-access-denied.png`](../screenshots/cloudtrail-iam-list-users-access-denied.png)
 - [`cloudtrail-iam-attach-admin-policy-access-denied.png`](../screenshots/cloudtrail-iam-attach-admin-policy-access-denied.png)
 - [`cloudtrail-iam-create-access-key-access-denied.png`](../screenshots/cloudtrail-iam-create-access-key-access-denied.png)
 - [`cloudtrail-s3-put-bucket-policy-access-denied.png`](../screenshots/cloudtrail-s3-put-bucket-policy-access-denied.png)
+
+---
 
 ## Build Validation Checklist
 
@@ -313,6 +340,8 @@ Evidence:
 | Risky IAM actions denied | Complete | [`session3-iam-attach-admin-policy-denied.png`](../screenshots/session3-iam-attach-admin-policy-denied.png) |
 | CloudTrail evidence collected | Complete | [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png) |
 
+---
+
 ## Final Build Outcome
 
 By the end of the setup and build phase, the lab environment included:
@@ -322,7 +351,7 @@ By the end of the setup and build phase, the lab environment included:
 - A test object for access validation
 - An intentionally broad starting policy
 - A custom least-privilege replacement policy
-- AWS CLI testing from the restricted user's perspective
+- AWS CLI testing from the restricted user’s perspective
 - CloudTrail audit evidence for denied activity
 
 This setup created the foundation for validating IAM least privilege through before-and-after access testing.
