@@ -1,39 +1,54 @@
-# Architecture
+# 01 - Architecture
 
 ## Purpose
 
-This section documents the high-level architecture for the AWS IAM least-privilege hardening lab.
+This section documents the high-level architecture for the AWS IAM Least Privilege and Access Control Hardening Lab.
 
-The lab is built around a test IAM identity that initially has broader permissions than required. Access is tested through the AWS CLI, logged through CloudTrail, and then remediated with a scoped least-privilege policy.
+The lab is built around a dedicated IAM test identity that initially has broader permissions than required. That access is tested through the AWS CLI, remediated with a scoped least-privilege policy, retested after remediation, and validated with CloudTrail audit evidence.
 
-## Lab Architecture Summary
+The goal is to show how IAM permissions affect real AWS actions and how least-privilege design reduces the blast radius of an identity.
 
-The core architecture follows a simple security validation workflow:
+---
+
+## Architecture Summary
+
+The lab follows a complete IAM hardening workflow:
 
 ```text
 Over-permissioned IAM identity
-→ AWS CLI access testing
-→ S3 and IAM action validation
-→ least-privilege remediation
-→ denied-action testing
-→ CloudTrail audit evidence
+        ↓
+AWS CLI access testing
+        ↓
+Risky access validated
+        ↓
+Broad policy removed
+        ↓
+Least-privilege policy applied
+        ↓
+Allowed and denied actions retested
+        ↓
+CloudTrail audit evidence reviewed
 ```
 
-The goal is to show how an AWS identity's permissions affect what actions it can perform, how excessive access can increase risk, and how least-privilege policy design reduces that risk.
+This architecture shows the relationship between identity, policy, action, resource, access decision, and audit logging.
+
+---
 
 ## Main Components
 
 | Component | Purpose |
 |---|---|
 | `lab4-junior-analyst` IAM user | Test identity used to simulate a restricted cloud user |
-| `AmazonS3FullAccess` | Initial intentionally over-permissioned policy |
+| `AmazonS3FullAccess` | Initial intentionally over-permissioned AWS managed policy |
 | Custom least-privilege S3 policy | Remediated policy allowing only required read access |
-| S3 bucket | Assigned lab resource used for access testing |
-| AWS CLI | Used to test allowed and denied actions from the user's perspective |
-| CloudTrail | Used to validate that AWS recorded the user's allowed and denied API activity |
+| S3 lab bucket | Assigned resource used for access testing |
+| AWS CLI | Used to test allowed and denied actions from the user’s perspective |
+| CloudTrail | Used to confirm AWS recorded the user’s allowed and denied API activity |
 | Screenshots | Evidence of configuration, CLI results, and CloudTrail audit logs |
 
-## High-Level Flow
+---
+
+## High-Level Architecture
 
 ```text
 +--------------------------------+
@@ -59,7 +74,7 @@ The goal is to show how an AWS identity's permissions affect what actions it can
                  v
 +--------------------------------+
 | Risk Identified                |
-| User has broader access        |
+| User has broader S3 access     |
 | than required for role         |
 +----------------+---------------+
                  |
@@ -74,8 +89,8 @@ The goal is to show how an AWS identity's permissions affect what actions it can
                  v
 +--------------------------------+
 | Post-Remediation Testing       |
-| Validate allowed/denied access |
-| through AWS CLI                |
+| Validate allowed access        |
+| Validate denied actions        |
 +----------------+---------------+
                  |
                  v
@@ -86,11 +101,13 @@ The goal is to show how an AWS identity's permissions affect what actions it can
 +--------------------------------+
 ```
 
+---
+
 ## Before Remediation
 
 Before remediation, the test IAM user had the AWS managed `AmazonS3FullAccess` policy attached.
 
-This allowed the user to perform broad S3 actions beyond the intended role.
+This gave the user broader S3 access than the intended role required.
 
 The user was able to:
 
@@ -98,11 +115,13 @@ The user was able to:
 - List S3 buckets in the account
 - Upload an object to the lab S3 bucket
 
-This represented an over-permissioned identity because the user only needed read access to one assigned bucket.
+This represented an over-permissioned identity because the intended role only required read access to one assigned S3 bucket.
+
+---
 
 ## After Remediation
 
-After remediation, the broad managed policy was replaced with a custom least-privilege policy.
+After remediation, the broad managed policy was removed and replaced with a custom least-privilege policy.
 
 The remediated policy allowed only:
 
@@ -119,44 +138,57 @@ The remediated policy did not allow:
 - Attaching administrator permissions
 - Creating new access keys
 
+This reduced the user’s effective permissions while preserving the access needed for the intended role.
+
+---
+
 ## Access-Control Flow
 
 ```text
 User identity
-   |
-   v
+        ↓
 IAM policy evaluation
-   |
-   v
+        ↓
 Requested AWS action
-   |
-   v
+        ↓
 Target AWS resource
-   |
-   v
-AWS decision: Allow or Deny
-   |
-   v
+        ↓
+AWS access decision
+        ↓
 CloudTrail audit event
 ```
 
-This lab demonstrates that AWS access is determined by the combination of:
+This lab demonstrates that AWS access decisions are based on the relationship between:
 
 ```text
 Identity + Policy + Action + Resource = Access Decision
 ```
 
-## Security Boundary
+---
+
+## Intended Security Boundary
 
 The intended security boundary was:
 
 ```text
 lab4-junior-analyst
-→ read-only access
-→ one assigned S3 bucket
+        ↓
+Read-only access
+        ↓
+One assigned S3 bucket
 ```
 
-The user should not have account-wide S3 visibility or IAM-level permissions.
+The user should not have:
+
+- Account-wide S3 visibility
+- S3 write access
+- S3 destructive access
+- S3 bucket policy modification access
+- IAM enumeration permissions
+- IAM privilege escalation permissions
+- Access key creation permissions
+
+---
 
 ## CloudTrail Role in the Architecture
 
@@ -173,20 +205,9 @@ After denied S3 and IAM actions were tested, CloudTrail was used to confirm that
 
 This connected the access-control tests to real AWS audit evidence.
 
-## Final Architecture Outcome
+CloudTrail mattered because the lab was not only about blocking risky actions. It was also about proving that denied activity could be reviewed later during investigation.
 
-The final architecture demonstrated a complete IAM hardening workflow:
-
-```text
-Over-permissioned identity
-→ risky access validated
-→ scoped least-privilege policy applied
-→ risky actions denied
-→ CloudTrail audit evidence collected
-```
-
-The result was a restricted IAM user that could still perform its intended read-only task while unnecessary S3 and IAM permissions were removed.
-
+---
 
 ## Architecture Evidence
 
@@ -199,3 +220,25 @@ The following screenshots support the architecture and access-control flow docum
 | AWS CLI identity validation | [`aws-cli-get-caller-identity.png`](../screenshots/aws-cli-get-caller-identity.png) |
 | Least-privilege policy attached | [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png) |
 | CloudTrail audit evidence | [`cloudtrail-session4-user-filtered-events.png`](../screenshots/cloudtrail-session4-user-filtered-events.png) |
+
+---
+
+## Final Architecture Outcome
+
+The final architecture demonstrated a complete IAM hardening workflow:
+
+```text
+Over-permissioned identity
+        ↓
+Risky access validated
+        ↓
+Scoped least-privilege policy applied
+        ↓
+Required access preserved
+        ↓
+Risky actions denied
+        ↓
+CloudTrail audit evidence collected
+```
+
+The result was a restricted IAM user that could still perform its intended read-only task while unnecessary S3 and IAM permissions were removed.
