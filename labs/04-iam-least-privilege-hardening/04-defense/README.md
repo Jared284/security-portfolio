@@ -1,8 +1,8 @@
-# Defense
+# 04 - Defense
 
 ## Purpose
 
-This section documents the defensive decisions made during the AWS IAM least-privilege hardening lab.
+This section documents the defensive decisions made during the AWS IAM Least Privilege and Access Control Hardening Lab.
 
 The goal was to reduce the permissions of the `lab4-junior-analyst` IAM user so the identity could only perform the actions required for its intended role.
 
@@ -10,16 +10,23 @@ This lab focuses on practical IAM defense:
 
 ```text
 Identify excessive access
-→ remove broad permissions
-→ apply scoped least privilege
-→ validate required access
-→ confirm risky actions are denied
-→ verify activity in CloudTrail
+        ↓
+Remove broad permissions
+        ↓
+Apply scoped least privilege
+        ↓
+Validate required access
+        ↓
+Confirm risky actions are denied
+        ↓
+Verify denied activity in CloudTrail
 ```
+
+---
 
 ## Defensive Goal
 
-The `lab4-junior-analyst` user should be able to perform only one basic job function:
+The `lab4-junior-analyst` user should be able to perform one basic job function:
 
 ```text
 Read from one assigned S3 bucket
@@ -40,6 +47,8 @@ The user should not be able to:
 - Attach administrator permissions
 - Create new access keys
 
+---
+
 ## Initial Risk: Over-Permissioned S3 Access
 
 The lab began with the `lab4-junior-analyst` user attached to the AWS managed policy:
@@ -52,21 +61,21 @@ This was intentionally over-permissioned.
 
 The user only needed read access to one assigned S3 bucket, but `AmazonS3FullAccess` allowed broad S3 actions across the account.
 
-From a cloud security perspective, this increased the identity's blast radius. If the access key were misused, the identity could potentially interact with S3 resources outside its intended job function.
+From a cloud security perspective, this increased the identity’s blast radius. If the access key were misused, the identity could potentially interact with S3 resources outside its intended job function.
 
-Evidence:
+### Evidence
 
 - [`initial-overpermissive-policy-attached.png`](../screenshots/initial-overpermissive-policy-attached.png)
 - [`s3-access-allowed-before-remediation.png`](../screenshots/s3-access-allowed-before-remediation.png)
 - [`s3-object-upload-allowed-before-remediation.png`](../screenshots/s3-object-upload-allowed-before-remediation.png)
+
+---
 
 ## Why the Initial Policy Was Risky
 
 The initial policy was risky because it violated least privilege.
 
 A junior analyst-style identity did not need broad S3 permissions. It only needed limited read access to one assigned bucket.
-
-The broad policy created several risks:
 
 | Risk | Why It Matters |
 |---|---|
@@ -75,6 +84,8 @@ The broad policy created several risks:
 | Larger blast radius | If credentials were misused, more AWS resources could be affected |
 | Weak role separation | The user's permissions exceeded its intended job function |
 | Harder investigation scope | More permissions create more possible paths of misuse |
+
+---
 
 ## Remediation: Scoped Least-Privilege Policy
 
@@ -91,14 +102,16 @@ Policy file:
 
 - [`least-privilege-s3-read-policy.json`](../policies/least-privilege-s3-read-policy.json)
 
-Evidence:
+### Evidence
 
 - [`least-privilege-policy-created.png`](../screenshots/least-privilege-policy-created.png)
 - [`least-privilege-policy-attached.png`](../screenshots/least-privilege-policy-attached.png)
 
+---
+
 ## Least-Privilege Design Decisions
 
-### 1. Scope access to one resource
+### 1. Scope Access to One Resource
 
 The policy was scoped to one specific S3 bucket:
 
@@ -108,7 +121,9 @@ jw-lab4-iam-test-bucket-2026
 
 This prevented the user from listing or interacting with unrelated S3 buckets.
 
-### 2. Allow only required actions
+---
+
+### 2. Allow Only Required Actions
 
 The user only needed read access.
 
@@ -131,9 +146,11 @@ iam:AttachUserPolicy
 iam:CreateAccessKey
 ```
 
-### 3. Preserve required access
+---
 
-A strong least-privilege policy should not break the user's required job function.
+### 3. Preserve Required Access
+
+A strong least-privilege policy should not break the user’s required job function.
 
 After remediation, the user could still list the assigned bucket and download the assigned object.
 
@@ -142,7 +159,9 @@ Evidence:
 - [`s3-read-access-allowed-after-remediation.png`](../screenshots/s3-read-access-allowed-after-remediation.png)
 - [`session3-s3-read-access-allowed.png`](../screenshots/session3-s3-read-access-allowed.png)
 
-### 4. Validate denied access
+---
+
+### 4. Validate Denied Access
 
 The remediation was not assumed to work. It was validated by testing actions the user should not be able to perform.
 
@@ -155,6 +174,8 @@ Denied actions included:
 - Listing IAM users
 - Attaching `AdministratorAccess`
 - Creating new access keys
+
+---
 
 ## Access Matrix
 
@@ -170,11 +191,13 @@ Denied actions included:
 | Attach `AdministratorAccess` | No | Denied | Prevents privilege escalation |
 | Create new access key | No | Denied | Prevents credential persistence |
 
+---
+
 ## S3 Defensive Validation
 
 The S3 validation confirmed that unnecessary storage permissions were removed.
 
-### Broad bucket listing denied
+### Broad Bucket Listing Denied
 
 Evidence:
 
@@ -185,7 +208,9 @@ Security meaning:
 
 The user could no longer enumerate all buckets in the account.
 
-### Upload denied
+---
+
+### Upload Denied
 
 Evidence:
 
@@ -196,7 +221,9 @@ Security meaning:
 
 The user could no longer write new objects to the bucket.
 
-### Delete denied
+---
+
+### Delete Denied
 
 Evidence:
 
@@ -206,7 +233,9 @@ Security meaning:
 
 The user could not perform destructive object actions.
 
-### Bucket policy modification denied
+---
+
+### Bucket Policy Modification Denied
 
 Evidence:
 
@@ -215,13 +244,15 @@ Evidence:
 
 Security meaning:
 
-The user could not weaken the bucket's resource-based permissions.
+The user could not weaken the bucket’s resource-based permissions.
+
+---
 
 ## IAM Defensive Validation
 
 The IAM validation confirmed that the user could not perform actions related to reconnaissance, privilege escalation, or credential persistence.
 
-### IAM enumeration denied
+### IAM Enumeration Denied
 
 Evidence:
 
@@ -232,7 +263,9 @@ Security meaning:
 
 The user could not list IAM users in the account.
 
-### Administrator policy attachment denied
+---
+
+### Administrator Policy Attachment Denied
 
 Evidence:
 
@@ -243,7 +276,9 @@ Security meaning:
 
 The user could not attach `AdministratorAccess` to itself. This prevented a direct privilege escalation path.
 
-### Access key creation denied
+---
+
+### Access Key Creation Denied
 
 Evidence:
 
@@ -253,6 +288,8 @@ Evidence:
 Security meaning:
 
 The user could not create additional long-lived credentials. This reduced credential persistence risk.
+
+---
 
 ## CloudTrail Validation
 
@@ -277,36 +314,49 @@ Evidence:
 
 CloudTrail mattered because it proved the activity was not only blocked, but also logged for investigation and accountability.
 
+---
+
 ## Defensive Outcome
 
-The remediation successfully reduced the IAM user's permissions while preserving required access.
+The remediation successfully reduced the IAM user’s permissions while preserving required access.
 
 Before remediation:
 
 ```text
 lab4-junior-analyst
-→ AmazonS3FullAccess
-→ broad S3 access across the account
+        ↓
+AmazonS3FullAccess
+        ↓
+Broad S3 access across the account
 ```
 
 After remediation:
 
 ```text
 lab4-junior-analyst
-→ custom least-privilege policy
-→ read-only access to one assigned bucket
+        ↓
+Custom least-privilege policy
+        ↓
+Read-only access to one assigned bucket
 ```
 
 This demonstrated a complete least-privilege hardening workflow:
 
 ```text
 Over-permissioned identity
-→ risky access validated
-→ scoped policy applied
-→ required access preserved
-→ risky actions denied
-→ CloudTrail audit evidence collected
+        ↓
+Risky access validated
+        ↓
+Scoped policy applied
+        ↓
+Required access preserved
+        ↓
+Risky actions denied
+        ↓
+CloudTrail audit evidence collected
 ```
+
+---
 
 ## Real-World Hardening Recommendations
 
@@ -322,6 +372,8 @@ In a production AWS environment, additional hardening would include:
 - Rotate or remove unused access keys
 - Review CloudTrail logs regularly for denied or unusual activity
 - Avoid assigning AWS managed full-access policies unless there is a clear operational requirement
+
+---
 
 ## Final Takeaway
 
