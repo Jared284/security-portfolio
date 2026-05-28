@@ -2,191 +2,495 @@
 
 ## Purpose
 
-This section documents the controlled attack simulations used to generate authentication telemetry for the SSH detection labs.
+This section documents the controlled SSH attack simulations used to generate real authentication telemetry for the Lab 1 detection workflow.
 
-Rather than relying on static example logs, attacker behavior was intentionally simulated against the Ubuntu server to produce realistic authentication events.
+Rather than relying on fake sample logs, the lab generated actual SSH authentication events against an Ubuntu Server VM and then used those events for detection engineering.
 
-These events were then analyzed and detected in the **Detection Engineering** section of the project.
+Primary telemetry source:
+
+~~~text
+/var/log/auth.log
+~~~
+
+The simulations supported:
+
+- SSH authentication log analysis
+- brute-force pattern identification
+- Fail2Ban automated mitigation
+- SOC-style log triage
+- failed login aggregation
+- time-window detection
+- failed attempts followed by successful login correlation
 
 ---
 
 ## Lab Environment
 
-Attack simulations were performed within the isolated lab environment.
+| Component | Value |
+|---|---|
+| Attack Source | Windows 11 host |
+| Source IP | `192.168.56.1` |
+| Target System | Ubuntu Server 24.04.3 LTS VM |
+| Target IP | `192.168.56.101` |
+| Target Service | OpenSSH Server (`sshd`) |
+| Network Type | VirtualBox host-only network |
+| Log Source | `/var/log/auth.log` |
+| Defensive Tool | Fail2Ban |
 
-**Target System**
-- Ubuntu Server 24.04 LTS
-- OpenSSH Server (`sshd`) running
-- Authentication logs stored in `/var/log/auth.log`
+All attack activity was performed inside a controlled local lab network.
 
-**Attack Source**
-- Windows 11 host system
-- SSH client used to initiate connection attempts
-
-**Network Setup**
-- Host-only network between Windows host and Ubuntu VM
-- Target server IP: `192.168.56.101`
-
-This setup ensured attack activity remained fully contained within the lab environment.
+The SSH target was not exposed to the public internet.
 
 ---
 
-## Attack Scenarios Simulated
+## Simulation Workflow
 
-The following attacker behaviors were simulated to generate authentication telemetry.
+The attack simulation workflow followed this sequence:
+
+~~~text
+Windows PowerShell SSH attempts
+        ↓
+Ubuntu OpenSSH authentication processing
+        ↓
+Events written to /var/log/auth.log
+        ↓
+Manual log review
+        ↓
+Fail2Ban response validation
+        ↓
+Shell/Python detection logic
+        ↓
+Alert evidence captured
+~~~
+
+This created a full detection engineering loop from attacker behavior to defender visibility.
 
 ---
 
-### Scenario 1 – Invalid Username Probing
+## Scenario 1 – Invalid Username Probing
 
-Attackers frequently attempt SSH authentication using common usernames to discover valid accounts.
+Attackers often try common usernames to discover valid SSH accounts.
+
+Example usernames used:
+
+- `admin`
+- `test`
+- `root`
+- `fakeuser1`
+- `fakeuser2`
 
 Example command:
 
-```
+~~~powershell
 ssh admin@192.168.56.101
-```
+~~~
 
-Example log entry generated:
+Expected log behavior:
 
-```
-Failed password for invalid user admin from 192.168.56.1 port 53712 ssh2
-```
+~~~text
+Invalid user admin from 192.168.56.1
+Failed password for invalid user admin from 192.168.56.1
+~~~
 
-Indicators produced:
+Evidence:
 
-- invalid username attempts
-- failed authentication events
-- attacker source IP visibility
+![Auth Log Invalid User Events](../screenshots/07-auth-log-invalid-user-events.png)
 
-These signals were used in **Lab 01 and Lab 02**.
+Detection value:
 
----
+- identifies username probing
+- shows attempts against non-existent accounts
+- supports brute-force and credential probing analysis
 
-### Scenario 2 – Repeated Authentication Failures
+Used in:
 
-Multiple authentication attempts were generated to simulate brute-force login behavior.
-
-Example command:
-
-```
-ssh testuser@192.168.56.101
-```
-
-Repeated attempts generated clusters of log entries such as:
-
-```
-Failed password for invalid user testuser from 192.168.56.1 port 53715 ssh2
-```
-
-Indicators produced:
-
-- repeated failed login attempts
-- high-frequency authentication failures
-- single source IP generating multiple events
-
-These signals were used in:
-
-- **Lab 02 – Pattern Identification**
-- **Lab 04 – Log Triage**
-- **Lab 05 – Automated Log Analysis**
+- Lab 01 – SSH Authentication Logging
+- Lab 02 – SSH Brute-Force Pattern Identification
+- Lab 04 – SSH Authentication Log Triage
+- Lab 07 – Failed SSH Attempts Followed by Successful Login
 
 ---
 
-### Scenario 3 – Burst Authentication Attempts
+## Scenario 2 – Repeated Failed SSH Authentication
 
-To test time-based detection logic, authentication attempts were generated rapidly from the same source IP.
+Repeated failed SSH attempts were generated from Windows PowerShell.
 
-Observed pattern:
+Example commands:
 
-- multiple failed login attempts
-- occurring within a short time window (≤60 seconds)
+~~~powershell
+ssh fakeuser1@192.168.56.101
+ssh admin@192.168.56.101
+ssh test@192.168.56.101
+ssh root@192.168.56.101
+ssh fakeuser2@192.168.56.101
+~~~
 
-This activity generated burst-style authentication telemetry used to test the **time-window detection rule** implemented in Lab 06.
+Attacker-side evidence:
+
+![Controlled Failed SSH Attempts](../screenshots/05-controlled-failed-ssh-attempts.png)
+
+Server-side evidence:
+
+![Auth Log Failed Password Events](../screenshots/06-auth-log-failed-password-events.png)
+
+Detection value:
+
+- creates failed password telemetry
+- creates repeated source IP activity
+- supports brute-force pattern detection
+- provides input for Fail2Ban threshold testing
+
+Used in:
+
+- Lab 02 – SSH Brute-Force Pattern Identification
+- Lab 03 – Fail2Ban Automated SSH Brute-Force Mitigation
+- Lab 04 – SSH Authentication Log Triage
+- Lab 05 – Automated SSH Failed Login Analysis
+- Lab 06 – SSH Brute Force Time-Window Detection
 
 ---
 
-### Scenario 4 – Successful Login Event
+## Scenario 3 – Failed Login Aggregation by Source IP
 
-A legitimate SSH login was performed to generate baseline authentication telemetry.
+After failed SSH events were generated, the logs were aggregated by source IP.
 
-Example command:
+Command used:
 
-```
-ssh analyst@192.168.56.101
-```
+~~~bash
+sudo grep "Failed password" /var/log/auth.log | grep -oP 'from \K[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+' | sort | uniq -c | sort -nr
+~~~
 
-Example log entry:
+Evidence:
 
-```
-Accepted password for analyst from 192.168.56.1 port 53801 ssh2
-```
+![Failed Logins Aggregated by IP](../screenshots/08-failed-logins-aggregated-by-ip.png)
 
-This event provided a reference point for distinguishing normal authentication behavior from attack patterns.
+Detection value:
+
+- groups failed login attempts by source IP
+- identifies repeat offenders
+- converts raw logs into analyst-readable output
+- avoids fragile parsing that accidentally extracts `ssh2` instead of the IP
+
+Used in:
+
+- Lab 02 – SSH Brute-Force Pattern Identification
+- Lab 05 – Automated SSH Failed Login Analysis
+
+---
+
+## Scenario 4 – Fail2Ban Threshold Trigger
+
+Repeated failed SSH attempts were generated quickly enough to trigger the Fail2Ban `sshd` jail.
+
+Fail2Ban settings used:
+
+| Setting | Value |
+|---|---|
+| `maxretry` | `5` |
+| `findtime` | `600` seconds |
+| `bantime` | `600` seconds |
+
+Expected behavior:
+
+~~~text
+5 failed SSH attempts within 600 seconds → source IP banned
+~~~
+
+Command used to validate ban status:
+
+~~~bash
+sudo fail2ban-client status sshd
+~~~
+
+Evidence:
+
+![Fail2Ban Banned IP After Attack](../screenshots/09-fail2ban-banned-ip-after-attack.png)
+
+Detection value:
+
+- proves Fail2Ban detected repeated failed authentication
+- confirms the source IP was added to the banned list
+- validates automated defensive response
+
+Used in:
+
+- Lab 03 – Fail2Ban Automated SSH Brute-Force Mitigation
+- Lab 04 – SSH Authentication Log Triage
+
+---
+
+## Scenario 5 – SSH Blocked After Ban
+
+After Fail2Ban banned the source IP, another SSH attempt was made from Windows PowerShell.
+
+Command used:
+
+~~~powershell
+ssh admin@192.168.56.101
+~~~
+
+Expected behavior:
+
+~~~text
+SSH connection times out while source IP is banned.
+~~~
+
+Evidence:
+
+![SSH Blocked After Fail2Ban Ban](../screenshots/10-ssh-blocked-after-fail2ban-ban.png)
+
+Detection value:
+
+- validates blocking from the attacker side
+- proves the ban was actually enforced
+- confirms response effectiveness beyond only checking Fail2Ban status
+
+Used in:
+
+- Lab 03 – Fail2Ban Automated SSH Brute-Force Mitigation
+- Lab 04 – SSH Authentication Log Triage
+
+---
+
+## Scenario 6 – Successful SSH Login Baseline
+
+A successful SSH login was performed after unbanning the source IP.
+
+Command used:
+
+~~~powershell
+ssh jared@192.168.56.101
+~~~
+
+Evidence:
+
+![Successful SSH Login After Unban](../screenshots/11-successful-ssh-login-after-unban.png)
+
+Detection value:
+
+- confirms normal SSH access works
+- creates an `Accepted password` event
+- establishes successful authentication baseline
+- supports later failed-to-successful correlation
+
+Used in:
+
+- Lab 01 – SSH Authentication Logging
+- Lab 04 – SSH Authentication Log Triage
+- Lab 07 – Failed SSH Attempts Followed by Successful Login
+
+---
+
+## Scenario 7 – Failed Attempts Followed by Successful Login
+
+This was the advanced simulation added to test a higher-value authentication detection.
+
+Sequence generated:
+
+~~~text
+failed SSH login as admin
+        ↓
+failed SSH login as test
+        ↓
+successful SSH login as jared
+~~~
+
+Commands used:
+
+~~~powershell
+ssh admin@192.168.56.101
+ssh test@192.168.56.101
+ssh jared@192.168.56.101
+~~~
+
+Attacker-side evidence:
+
+![Failed Then Successful SSH Login Sequence](../screenshots/12-failed-then-successful-ssh-login-sequence.png)
+
+Server-side log evidence:
+
+![Auth Log Failed Then Successful Login Events](../screenshots/13-auth-log-failed-then-successful-login-events.png)
+
+Detection value:
+
+- tests a possible credential compromise pattern
+- shows failures and success from the same source IP
+- moves beyond basic failed-login counting
+- supports SOC-style investigation of suspicious successful access
+
+Used in:
+
+- Lab 07 – Failed SSH Attempts Followed by Successful Login
+
+---
+
+## Scenario 8 – Python Detector Alert Validation
+
+After generating the failed-to-successful login pattern, a Python detector was executed against `/var/log/auth.log`.
+
+Command used:
+
+~~~bash
+sudo python3 failed_then_success_detector.py
+~~~
+
+Evidence:
+
+![Failed Then Success Detector Alert Output](../screenshots/14-failed-then-success-detector-alert-output.png)
+
+Detection value:
+
+- validates custom detection logic
+- proves the detector parsed real authentication logs
+- confirms the script correlated failed/invalid events with successful login
+- generates analyst-readable alert output
+
+Used in:
+
+- Lab 07 – Failed SSH Attempts Followed by Successful Login
+
+---
+
+## Detection Script Evidence
+
+The Python detection script was captured in two screenshots.
+
+Evidence:
+
+![Failed Then Success Python Detector Script Top](../screenshots/15a-failed-then-success-python-detector-script-top.png)
+
+![Failed Then Success Python Detector Script Bottom](../screenshots/15b-failed-then-success-python-detector-script-bottom.png)
+
+Detection value:
+
+- documents the detection-as-code logic
+- shows regex-based parsing of SSH authentication events
+- shows time-window correlation
+- supports recruiter/interviewer review of the actual detection implementation
 
 ---
 
 ## Telemetry Generated
 
-All authentication activity generated during attack simulation was recorded in:
+The simulations generated the following telemetry types:
 
-```
-/var/log/auth.log
-
-```
-
-These logs served as the primary data source for:
-
-- authentication analysis
-- brute-force detection
-- automated log parsing
-- time-window detection logic
+| Telemetry Type | Purpose |
+|---|---|
+| `Invalid user` | Detect username probing |
+| `Failed password` | Detect failed authentication |
+| `Accepted password` | Detect successful authentication |
+| Source IP | Correlate activity by origin |
+| Target username | Identify accounts being attempted |
+| Timestamp | Support event ordering and time-window detection |
+| Fail2Ban ban status | Validate automated mitigation |
+| SSH timeout after ban | Validate attacker-side enforcement |
 
 ---
 
 ## Relationship to Detection Labs
 
-The attack simulations in this section produced the telemetry analyzed throughout the detection labs:
-
 | Attack Behavior | Detection Lab |
-|----------------|---------------|
-| Authentication log observation | Lab 01 |
-| Repeated login failures | Lab 02 |
-| Automated brute-force blocking | Lab 03 |
-| Log investigation and triage | Lab 04 |
-| Script-based log aggregation | Lab 05 |
-| Time-window brute-force detection | Lab 06 |
+|---|---|
+| Baseline SSH logging | Lab 01 |
+| Invalid username probing | Lab 01, Lab 02, Lab 04, Lab 07 |
+| Repeated failed login attempts | Lab 02, Lab 03, Lab 04, Lab 05, Lab 06 |
+| Source IP aggregation | Lab 02, Lab 05 |
+| Fail2Ban threshold trigger | Lab 03, Lab 04 |
+| Attacker-side blocked SSH validation | Lab 03, Lab 04 |
+| Successful SSH login baseline | Lab 01, Lab 04, Lab 07 |
+| Failed attempts followed by successful login | Lab 07 |
+| Python detector alert validation | Lab 07 |
 
-This demonstrates the full lifecycle of:
+This shows the full lab lifecycle:
 
-```
+~~~text
 Attack Simulation
-↓
+        ↓
 Log Generation
-↓
-Detection Development
-↓
-Automated Response
-```
+        ↓
+Manual Investigation
+        ↓
+Pattern Identification
+        ↓
+Automated Mitigation
+        ↓
+Detection-as-Code
+        ↓
+Alert Validation
+~~~
 
 ---
 
-## Why Attack Simulation Matters
+## Safety and Containment
 
-Security detection logic must be tested against realistic attacker behavior.
+All simulations were performed in a host-only VirtualBox lab network.
 
-By generating authentication events directly within the lab environment, these experiments ensured that detection logic was validated using **real system telemetry rather than static examples**.
+Safety controls:
 
-This approach mirrors how detection engineering is tested and refined in production SOC environments.
+- no public exposure of the SSH target
+- controlled Windows host used as the only source
+- Ubuntu VM isolated from external attackers
+- test usernames used intentionally
+- Fail2Ban unban/reset performed after testing
+- no third-party systems targeted
+
+This kept the lab safe while still producing real SSH authentication telemetry.
+
+---
+
+## Limitations
+
+The simulations were intentionally scoped.
+
+Current limitations:
+
+- single source IP
+- single target host
+- no distributed brute-force simulation
+- no password list tooling
+- no SIEM ingestion
+- no external threat intelligence
+- no post-login command monitoring
+- no lateral movement simulation
+- no multi-host correlation
+
+These limitations are acceptable because the purpose was to generate controlled SSH telemetry for host-based detection engineering.
 
 ---
 
 ## Future Enhancements
 
-Future attack simulations could include:
+Future simulations could include:
 
-- dictionary-based SSH brute-force attempts
-- distributed authentication attempts from multiple IPs
-- credential stuffing simulations
-- automated attack generation using scripting tools
-- integration with penetration testing frameworks
+- low-and-slow SSH failures
+- password spraying across multiple local users
+- distributed attempts from multiple lab hosts
+- post-login command monitoring after successful authentication
+- scripted attack generation for repeatability
+- SIEM log ingestion and replay
+- Splunk, Elastic, or Sentinel query validation
+- IP reputation or geolocation enrichment
+
+---
+
+## Outcome
+
+The attack simulations successfully generated real SSH authentication telemetry for every Lab 1 detection stage.
+
+The simulations supported:
+
+- baseline SSH logging
+- brute-force pattern identification
+- Fail2Ban automated mitigation
+- SOC-style log triage
+- failed login aggregation
+- time-window detection
+- failed-to-successful login correlation
+
+---
+
+## Key Takeaway
+
+Detection engineering is stronger when detections are tested against behavior that was actually generated.
+
+This section proves that the Lab 1 detections are based on real SSH activity, real Linux logs, and validated response behavior instead of unsupported example text.
