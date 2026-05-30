@@ -51,7 +51,7 @@ That is what made this endpoint useful for demonstrating Broken Object Level Aut
 
 The screenshot below shows the API Gateway route configured for the account lookup endpoint.
 
-![API Gateway Route](../screenshots/detection/api-gateway-route.png)
+![API Gateway Route](../screenshots/attacks/api-gateway-route.png)
 
 ---
 
@@ -119,7 +119,7 @@ The security issue occurs when the backend trusts that path parameter without ve
 
 The screenshot below shows API Gateway request testing against the account endpoint.
 
-![API Gateway Request](../screenshots/detection/api-gateway-request.png)
+![API Gateway Request](../screenshots/attacks/api-gateway-request.png)
 
 ---
 
