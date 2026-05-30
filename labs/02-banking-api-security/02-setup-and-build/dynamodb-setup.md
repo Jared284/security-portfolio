@@ -106,6 +106,14 @@ These records were intentionally simple so the authorization logic could be clea
 
 ---
 
+## DynamoDB Evidence
+
+The screenshot below shows the backend test records used for account and transaction testing.
+
+![Transaction Records](../screenshots/transactions-records.png)
+
+---
+
 ## Why Multiple Accounts Were Needed
 
 The BOLA vulnerability requires at least two separate account objects.
@@ -200,7 +208,7 @@ The authorization fix controlled whether the requester should receive the return
 
 ---
 
-## Evidence
+## Evidence Summary
 
 Screenshot evidence related to DynamoDB setup includes:
 
