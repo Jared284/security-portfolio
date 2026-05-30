@@ -107,6 +107,14 @@ In production, requester identity should come from a trusted authentication prov
 
 ---
 
+## Authorization Code Evidence
+
+The screenshot below shows the secure Lambda authorization logic that compares requester identity to account ownership before returning data.
+
+![Lambda Authorization Check](../screenshots/lambda-authorization-check.png)
+
+---
+
 ## Secure Function Behavior
 
 The secure Lambda function performs the following steps:
@@ -209,7 +217,7 @@ The requester owns the account, so access is allowed.
 
 Evidence:
 
-- `authorized-request.png`
+![Authorized Request](../screenshots/authorized-request.png)
 
 ---
 
@@ -244,7 +252,7 @@ The requester does not own the account, so access is denied.
 
 Evidence:
 
-- `blocked-request.png`
+![Blocked Request](../screenshots/blocked-request.png)
 
 ---
 
@@ -262,7 +270,7 @@ The secure implementation is successful because it does both:
 
 ---
 
-## Evidence
+## Evidence Summary
 
 Evidence related to the secure Lambda implementation includes:
 
