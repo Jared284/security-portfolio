@@ -134,7 +134,7 @@ Normal account lookup works.
 
 Evidence:
 
-- `bola-request-acc-123.png`
+![BOLA Request Account 123](../screenshots/bola-request-acc-123.png)
 
 ---
 
@@ -191,7 +191,7 @@ The API returned another user's account data without verifying ownership.
 
 Evidence:
 
-- `bola-request-acc-456.png`
+![BOLA Request Account 456](../screenshots/bola-request-acc-456.png)
 
 ---
 
@@ -254,7 +254,7 @@ This type of vulnerability is severe because the API may appear to work correctl
 
 ---
 
-## Evidence
+## Evidence Summary
 
 Evidence collected during the attack phase includes:
 
@@ -262,9 +262,9 @@ Evidence collected during the attack phase includes:
 |---|---|
 | `bola-request-acc-123.png` | Request for the legitimate account |
 | `bola-request-acc-456.png` | Modified request returning another account |
+| `api-gateway-request.png` | API Gateway request testing |
 | `lambda-test-acc-123.png` | Lambda retrieving account 123 |
 | `lambda-test-acc-456.png` | Lambda retrieving account 456 |
-| `api-gateway-request.png` | API Gateway request testing |
 | `transactions-records.png` | Backend records used for testing |
 
 ---
