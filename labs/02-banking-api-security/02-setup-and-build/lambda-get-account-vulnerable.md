@@ -76,6 +76,14 @@ That missing authorization check created the Broken Object Level Authorization v
 
 ---
 
+## Vulnerable Lambda Code Evidence
+
+The screenshot below shows the vulnerable Lambda implementation that retrieves account data based on the supplied `accountId`.
+
+![Vulnerable Lambda Code](../screenshots/lambda-code-get-account.png)
+
+---
+
 ## Vulnerable Code Behavior
 
 The vulnerable Lambda function:
@@ -165,7 +173,7 @@ This confirmed that the Lambda function could retrieve account records from Dyna
 
 Evidence:
 
-- `lambda-test-acc-123.png`
+![Lambda Test Account 123](../screenshots/lambda-test-acc-123.png)
 
 ---
 
@@ -189,7 +197,7 @@ This confirmed that the function would return any valid account record as long a
 
 Evidence:
 
-- `lambda-test-acc-456.png`
+![Lambda Test Account 456](../screenshots/lambda-test-acc-456.png)
 
 ---
 
@@ -201,7 +209,7 @@ This was fixed by updating the Lambda execution role with the required DynamoDB 
 
 Evidence:
 
-- `lambda-permission-error.png`
+![Lambda Permission Error](../screenshots/lambda-permission-error.png)
 
 Security note:
 
@@ -214,7 +222,7 @@ After the IAM issue was fixed, Lambda could successfully query DynamoDB, which a
 
 ---
 
-## Evidence
+## Evidence Summary
 
 Evidence related to the vulnerable Lambda function includes:
 
