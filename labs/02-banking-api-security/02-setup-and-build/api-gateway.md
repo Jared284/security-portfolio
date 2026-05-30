@@ -47,6 +47,14 @@ That is what made this endpoint useful for demonstrating Broken Object Level Aut
 
 ---
 
+## API Gateway Route Evidence
+
+The screenshot below shows the API Gateway route configured for the account lookup endpoint.
+
+![API Gateway Route](../screenshots/api-gateway-route.png)
+
+---
+
 ## Request Flow
 
 ~~~text
@@ -107,6 +115,14 @@ The security issue occurs when the backend trusts that path parameter without ve
 
 ---
 
+## API Request Evidence
+
+The screenshot below shows API Gateway request testing against the account endpoint.
+
+![API Gateway Request](../screenshots/api-gateway-request.png)
+
+---
+
 ## Vulnerable API Behavior
 
 In the vulnerable version, the route allowed a requester to control which account object was retrieved.
@@ -131,19 +147,6 @@ This allowed the following insecure behavior:
 | `GET /accounts/acc-456` | Account 456 returned |
 
 Because no ownership validation was enforced, a requester could modify the object identifier and retrieve another user's account data.
-
----
-
-## Evidence
-
-Screenshots captured during this setup include:
-
-| Screenshot | What It Shows |
-|---|---|
-| `api-gateway-route.png` | API Gateway route for `GET /accounts/{accountId}` |
-| `api-gateway-request.png` | API Gateway request testing against the account endpoint |
-| `bola-request-acc-123.png` | Request for the first account |
-| `bola-request-acc-456.png` | Modified request for another account |
 
 ---
 
@@ -211,6 +214,17 @@ Denied if owner does not match
 ~~~
 
 This means API Gateway remains the routing layer, while Lambda becomes the authorization enforcement point.
+
+---
+
+## Evidence Summary
+
+| Screenshot | What It Shows |
+|---|---|
+| `api-gateway-route.png` | API Gateway route for `GET /accounts/{accountId}` |
+| `api-gateway-request.png` | API Gateway request testing against the account endpoint |
+| `bola-request-acc-123.png` | Request for the legitimate account |
+| `bola-request-acc-456.png` | Modified request for another account |
 
 ---
 
