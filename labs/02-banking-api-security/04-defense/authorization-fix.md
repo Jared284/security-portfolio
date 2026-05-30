@@ -206,6 +206,14 @@ The account is only returned when the requester owns it.
 
 ---
 
+## Authorization Code Evidence
+
+The screenshot below shows the Lambda authorization check added during remediation.
+
+![Lambda Authorization Check](../screenshots/lambda-authorization-check.png)
+
+---
+
 ## Remediation Validation
 
 The same access pattern was tested after the authorization check was added.
@@ -245,7 +253,7 @@ authorization result = allowed
 
 Evidence:
 
-- `authorized-request.png`
+![Authorized Request](../screenshots/authorized-request.png)
 
 ---
 
@@ -275,7 +283,7 @@ authorization result = denied
 
 Evidence:
 
-- `blocked-request.png`
+![Blocked Request](../screenshots/blocked-request.png)
 
 ---
 
@@ -317,7 +325,7 @@ The application backend must enforce object-level authorization because it under
 
 ---
 
-## Evidence
+## Evidence Summary
 
 Evidence collected for this remediation includes:
 
