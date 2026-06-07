@@ -1,22 +1,22 @@
-﻿# Lab Architecture
+# Simulation Architecture
 
 ## Overview
 
-This document describes the architecture for a local SSH detection engineering lab built with VirtualBox, Ubuntu Server, OpenSSH, Fail2Ban, Linux authentication logs, and custom detection logic.
+This document describes the architecture for a local SSH detection engineering simulation built with VirtualBox, Ubuntu Server, OpenSSH, Fail2Ban, Linux authentication logs, and custom detection logic.
 
-The lab is designed to simulate a simplified SOC workflow:
+The simulation recreates a simplified SOC workflow:
 
 ~~~text
 Controlled SSH Activity
-        Γåô
+        ↓
 Linux Authentication Telemetry
-        Γåô
+        ↓
 Manual Log Review
-        Γåô
+        ↓
 Detection Logic
-        Γåô
+        ↓
 Automated Mitigation
-        Γåô
+        ↓
 Detection-as-Code Correlation
 ~~~
 
@@ -72,13 +72,13 @@ Firewall Ban
 |---|---|
 | Host OS | Windows 11 |
 | Virtualization Platform | Oracle VirtualBox |
-| Host Role | Administrative workstation and controlled SSH attack source |
+| Host Role | Administrative workstation and controlled SSH activity source |
 | Source IP | `192.168.56.1` |
 
 The Windows host performs two roles:
 
-1. Administrative control point for managing the lab
-2. Controlled attack simulation source for generating SSH authentication events
+1. Administrative control point for managing the Ubuntu VM
+2. Controlled SSH activity source for generating authentication telemetry
 
 This design keeps all testing local and controlled while still producing real SSH logs on the Ubuntu server.
 
@@ -109,28 +109,28 @@ Evidence:
 | Setting | Value |
 |---|---|
 | Network Mode | Host-only networking |
-| Attacker / Source IP | `192.168.56.1` |
-| Target / Guest IP | `192.168.56.101` |
+| Source IP | `192.168.56.1` |
+| Target IP | `192.168.56.101` |
 | Exposed Service | SSH on TCP/22 |
 | External Exposure | None |
 
-The lab uses host-only networking so the Ubuntu VM is reachable from the Windows host but not exposed to the public internet.
+The simulation uses host-only networking so the Ubuntu VM is reachable from the Windows host but not exposed to the public internet.
 
-This allows SSH attack simulation without creating unnecessary real-world exposure.
+This allows SSH activity simulation without creating unnecessary real-world exposure.
 
 ---
 
 ## Exposed Services
 
-Only SSH was intentionally exposed inside the lab network.
+Only SSH was intentionally exposed inside the local network.
 
 | Service | Port | Purpose |
 |---|---|---|
 | SSH | TCP/22 | Generate authentication telemetry and test detection logic |
 
-The lab does not expose web services, databases, cloud resources, or external-facing applications.
+The simulation does not expose web services, databases, cloud resources, or external-facing applications.
 
-This narrow attack surface keeps the lab focused on SSH authentication monitoring and response.
+This narrow attack surface keeps the project focused on SSH authentication monitoring and response.
 
 Evidence:
 
@@ -161,19 +161,19 @@ Evidence:
 
 ## Telemetry Flow
 
-SSH activity in this lab follows this telemetry path:
+SSH activity in this simulation follows this telemetry path:
 
 ~~~text
 SSH login attempt
-        Γåô
+        ↓
 OpenSSH processes authentication
-        Γåô
+        ↓
 Authentication result is written to /var/log/auth.log
-        Γåô
+        ↓
 Analyst reviews logs manually
-        Γåô
+        ↓
 Detection logic identifies suspicious patterns
-        Γåô
+        ↓
 Fail2Ban or Python logic produces response/alert output
 ~~~
 
@@ -185,19 +185,19 @@ The primary telemetry source is:
 
 This file records SSH events such as:
 
-- Invalid username attempts
-- Failed password attempts
-- Accepted password logins
-- Source IP addresses
-- Target usernames
+- invalid username attempts
+- failed password attempts
+- accepted password logins
+- source IP addresses
+- target usernames
 - SSH process identifiers
-- Timestamps
+- timestamps
 
 ---
 
 ## Detection Pipeline
 
-The lab uses multiple layers of detection:
+The simulation uses multiple layers of detection:
 
 | Layer | Purpose |
 |---|---|
@@ -228,7 +228,7 @@ Monitored Server Zone
 - Runs detection and response tooling
 ~~~
 
-All SSH activity is intentionally generated from the Windows host. Because the lab is isolated, any suspicious authentication activity in the logs is known to come from controlled testing.
+All SSH activity is intentionally generated from the Windows host. Because the simulation is isolated, suspicious authentication activity in the logs is known to come from controlled testing.
 
 This isolation makes it easier to validate detection logic without background internet noise.
 
@@ -236,15 +236,15 @@ This isolation makes it easier to validate detection logic without background in
 
 ## Threat Model
 
-This lab models common SSH authentication threats against Linux systems.
+This simulation models common SSH authentication threats against Linux systems.
 
 The simulated behaviors include:
 
-- Repeated failed SSH login attempts
-- Invalid username probing
-- Brute-force style password guessing
-- Burst authentication attempts
-- Failed attempts followed by successful login from the same source IP
+- repeated failed SSH login attempts
+- invalid username probing
+- brute-force-style password guessing
+- burst authentication attempts
+- failed attempts followed by successful login from the same source IP
 
 The final pattern is especially important because it may indicate that an attacker moved from unsuccessful authentication attempts to successful access.
 
@@ -252,7 +252,7 @@ The final pattern is especially important because it may indicate that an attack
 
 ## Attack Simulation Source
 
-All attack simulation was generated from the Windows host using PowerShell and the native SSH client.
+All SSH activity was generated from the Windows host using PowerShell and the native SSH client.
 
 Example simulated activity:
 
@@ -277,13 +277,13 @@ The response path is:
 
 ~~~text
 Repeated failed SSH logins
-        Γåô
+        ↓
 Events written to /var/log/auth.log
-        Γåô
+        ↓
 Fail2Ban sshd jail detects threshold match
-        Γåô
+        ↓
 Source IP is added to banned list
-        Γåô
+        ↓
 Further SSH connections from that IP are blocked
 ~~~
 
@@ -299,14 +299,14 @@ Evidence:
 
 | Decision | Reason |
 |---|---|
-| Use VirtualBox | Keeps the lab local, free, and repeatable |
+| Use VirtualBox | Keeps the environment local, free, and repeatable |
 | Use Ubuntu Server | Provides realistic Linux authentication logging |
 | Use host-only networking | Prevents public exposure while allowing SSH testing |
 | Use OpenSSH | Produces real SSH authentication telemetry |
 | Use Fail2Ban | Demonstrates automated defensive response |
 | Use `/var/log/auth.log` | Provides raw Linux security telemetry |
 | Use Python detection logic | Demonstrates detection-as-code and correlation |
-| Use screenshots | Provides evidence that the lab was built and validated |
+| Use screenshots | Provides evidence that the simulation was built and validated |
 
 ---
 
@@ -319,7 +319,7 @@ During initial setup, outbound internet connectivity was required for:
 - Fail2Ban installation
 - dependency installation
 
-After setup, the lab was operated in a controlled host-only environment to prevent public exposure.
+After setup, the simulation was operated in a controlled host-only environment to prevent public exposure.
 
 This separation supports safe testing while still allowing realistic SSH telemetry generation.
 
@@ -331,15 +331,15 @@ This architecture is intentionally simple.
 
 Current limitations include:
 
-- Single attacker/source IP
-- Single Ubuntu target host
-- No centralized SIEM ingestion
-- No multi-host log forwarding
-- No external threat intelligence enrichment
-- No cloud-based detection pipeline
-- No post-login command monitoring
+- single attacker/source IP
+- single Ubuntu target host
+- no centralized SIEM ingestion
+- no multi-host log forwarding
+- no external threat intelligence enrichment
+- no cloud-based detection pipeline
+- no post-login command monitoring
 
-These limitations are acceptable for the purpose of the lab because the focus is host-based SSH detection engineering.
+These limitations are acceptable because the focus is host-based SSH detection engineering.
 
 ---
 
@@ -349,7 +349,7 @@ These limitations are acceptable for the purpose of the lab because the focus is
 - SSH authentication logs provide enough detail to build meaningful detections.
 - Automated blocking is useful, but it must be validated from both the defender and attacker perspective.
 - Failed login attempts alone are useful, but failed attempts followed by successful login are higher value.
-- A controlled local lab can still demonstrate realistic SOC skills when evidence, logs, detection logic, and response validation are documented clearly.
+- A controlled local simulation can still demonstrate realistic SOC skills when evidence, logs, detection logic, and response validation are documented clearly.
 
 ---
 
@@ -359,12 +359,18 @@ This architecture supports an end-to-end SSH detection workflow:
 
 ~~~text
 Simulate attack behavior
+        ↓
 Generate authentication logs
+        ↓
 Investigate suspicious activity
+        ↓
 Aggregate failed login patterns
+        ↓
 Trigger automated response
+        ↓
 Build detection-as-code logic
+        ↓
 Correlate failed attempts with successful access
 ~~~
 
-The result is a safe, isolated, recruiter-readable detection engineering lab focused on Linux authentication telemetry and SSH threat detection.
+The result is a safe, isolated, recruiter-readable detection engineering simulation focused on Linux authentication telemetry and SSH threat detection.
