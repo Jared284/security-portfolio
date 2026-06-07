@@ -21,20 +21,20 @@ Each simulation is built to show a complete security workflow: setup, security a
 
 ## Recommended Review Order
 
-Start with the cloud security labs first:
+Start with the cloud security simulations first:
 
 1. [AWS Cloud Security Monitoring](./03-cloud-security-monitoring/)
 2. [AWS IAM Least Privilege Hardening](./04-iam-least-privilege-hardening/)
 3. [AWS Banking API Security](./02-banking-api-security/)
 4. [SSH Brute Force Detection](./01-ssh-bruteforce-detection/)
 
-Labs 3 and 4 are the strongest cloud-focused projects and should be reviewed first.
+Simulations 3 and 4 are the strongest cloud-focused projects and should be reviewed first.
 
 ---
 
-## Lab Structure
+## Simulation Structure
 
-Most labs follow this general structure:
+Most simulations follow this general structure:
 
 ```text
 README.md
@@ -47,7 +47,7 @@ README.md
 screenshots/
 ```
 
-Some labs include additional folders when needed, such as:
+Some simulations include additional folders when needed, such as:
 
 ```text
 policies/
@@ -61,7 +61,7 @@ The structure is intentionally consistent so each project can be reviewed quickl
 
 ## Core Security Themes
 
-Across the lab set, the main themes are:
+Across the simulation set, the main themes are:
 
 - Cloud security monitoring
 - AWS IAM hardening
@@ -77,7 +77,7 @@ Across the lab set, the main themes are:
 
 ## Evidence Included
 
-The labs include evidence such as:
+The simulations include evidence such as:
 
 - AWS screenshots
 - CloudTrail events
@@ -94,9 +94,9 @@ The goal is to make each project reviewable through actual evidence, not just wr
 
 ---
 
-## Lab Status
+## Simulation Status
 
-| Lab | Status |
+| Simulation | Status |
 |---|---|
 | [01 - SSH Brute Force Detection](./01-ssh-bruteforce-detection/) | Complete |
 | [02 - AWS Banking API Security](./02-banking-api-security/) | Complete |
@@ -107,6 +107,6 @@ The goal is to make each project reviewable through actual evidence, not just wr
 
 ## Notes
 
-These are controlled lab environments, not production systems.
+These are controlled simulation environments, not production systems.
 
-The purpose of the labs is to demonstrate practical security thinking: building systems, generating security activity, collecting evidence, validating controls, documenting limitations, and explaining the results clearly.
+The purpose of the simulations is to demonstrate practical security thinking: building systems, generating security activity, collecting evidence, validating controls, documenting limitations, and explaining the results clearly.
