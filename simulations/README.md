@@ -1,16 +1,16 @@
-# Cybersecurity Labs Index
+# Cybersecurity Simulations Index
 
-This directory contains hands-on cybersecurity labs focused on cloud security, detection engineering, IAM hardening, API security, and Linux security operations.
+This directory contains hands-on cybersecurity simulations focused on cloud security, detection engineering, IAM hardening, API security, and Linux security operations.
 
-Each lab is built to show a complete security workflow: setup, security activity, telemetry, detection or hardening, validation evidence, screenshots, and lessons learned.
+Each simulation is built to show a complete security workflow: setup, security activity, telemetry, detection or hardening, validation evidence, screenshots, and lessons learned.
 
 [Back to main portfolio README](../README.md)
 
 ---
 
-## Lab Overview
+## Simulation Overview
 
-| Lab | Focus Area | Primary Tools / Services | What It Proves |
+| Simulation | Focus Area | Primary Tools / Services | What It Proves |
 |---|---|---|---|
 | [03 - AWS Cloud Security Monitoring](./03-cloud-security-monitoring/) | Cloud Security / Detection Engineering | EC2, CloudTrail, CloudWatch Logs, metric filters, alarms, SNS | Ability to build and validate end-to-end AWS security monitoring and alerting |
 | [04 - AWS IAM Least Privilege Hardening](./04-iam-least-privilege-hardening/) | IAM / Access Control | IAM, S3, AWS CLI, CloudTrail | Ability to identify over-permissioned access, enforce least privilege, and validate denied actions |
